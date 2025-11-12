@@ -5,11 +5,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="https://kit.fontawesome.com/4fae0f3553.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="Register.css">
+    <script src="Register.js"></script>
 </head>
 
 <body>
 
+    <div class="wrapper">
+        <form action="">
+            <h1>Registration</h1>
+
+            <div class="input-box">
+                <div class="input-field">
+                    <input type="text" placeholder="Username" required>
+                    <i class="fa-solid fa-user fa-sm"></i>
+                </div>
+                <div class="input-box">
+                    <div class="input-field">
+                        <input type="email" placeholder="Email" required>
+                        <i class="fa-solid fa-envelope fa-sm"></i>
+                    </div>
+                    <div class="input-box">
+                        <div class="input-field">
+                            <input type="password" placeholder="Password" required id="myInput">
+                            <i class="fa-solid fa-lock fa-sm"></i>
+
+                        </div>
+                        <div class="input-box">
+                            <div class="input-field">
+                                <input type="password" placeholder="Confirm Password" required id="myInput2">
+                                <i class="fa-solid fa-lock fa-sm"></i>
+                            </div>
+                            <div class="input-box">
+                                <div class="input-field">
+                                    <input type="text" placeholder="Authorized person">
+                                    <i class="fa-solid fa-user-check fa-sm"></i>
+                                </div>
+                                <div class="input-box">
+                                    <div class="input-field">
+                                        <input type="email" placeholder="Authorized Email">
+                                        <i class="fa-solid fa-envelope-circle-check fa-sm"></i>
+                                    </div>
+
+                                    <input type="checkbox" onclick="myFunction()">Show Password
+                                </div>
+        </form>
+    </div>
 
 </body>
 
