@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://kit.fontawesome.com/4fae0f3553.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="Register.css">
+    <script src="Validation.js"></script>
+
+</head>
+
+<body>
+
+    <div class="wrapper">
+        <h1>Account Registreren</h1>
+
+
+        <!-- DE FOUTMELDING DIV (verborgen totdat de wachtwoorden niet matchen) -->
+        <div id="error-message" class="error-box" style="display: none;"></div>
+
+        <!-- Succesmelding (alleen voor deze preview) -->
+        <div id="success-message" class="server-message"
+            style="background-color: #d1e7dd; border: 1px solid #a3cfb4; color: #0f5132;"></div>
+
+        <form action="/Register2.html" method="POST" onsubmit="return validatePassword()">
+
+            <div class="input-box">
+                <div class="input-field">
+                    <input type="text" placeholder="Username" name="username" required>
+                    <i class="fa-solid fa-user fa-xs"></i>
+                </div>
+                <div class="input-field">
+                    <input type="email" placeholder="Email" name="email" required>
+                    <i class="fa-solid fa-envelope fa-sm"></i>
+                </div>
+            </div>
+            <div class="input-box">
+                <div class="input-field">
+                    <input type="password" placeholder="Password" name="password" id="password" required>
+                    <i class="fa-solid fa-lock fa-sm"></i>
+                </div>
+                <div class="input-field">
+                    <input type="password" placeholder="ConfirmPassword" id="confirm_password" required>
+                    <i class="fa-solid fa-lock fa-sm"></i>
+                </div>
+            </div>
+            <div class="input-box">
+                <div class="input-field">
+                    <input type="text" placeholder="AuthorizedPerson" name="AuthorizedPerson">
+                    <i class="fa-solid fa-user-check fa-sm"></i>
+                </div>
+                <div class="input-field">
+                    <input type="email" placeholder="AuthorizedEmail" name="AuthorizedEmail">
+                    <i class="fa-solid fa-envelope-circle-check fa-sm"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="btn">Register</button>
+
+        </form>
+
+</body>
+
+</html>
