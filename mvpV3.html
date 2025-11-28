@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="mvpV3buttons.js"></script>
+    <link rel="stylesheet" href="mvpV3.css">
+</head>
+
+<body>
+    <h1>TrustBox</h1>
+    <img src="trustbox-logo.png.png" class="logo" alt="TrustBox logo">
+    <div class="top-text">
+        <p class="subtitle">Secure. Simple. Yours.<br>Your passwords, safely stored and managed</p>
+    </div>
+    <div class="wrapper">
+        <form id="mvp-form">
+            <div class="field-group" id="group-1">
+                <!--<h3>Groep 1</h3>-->
+                <div class="input-container" id="input-container-1">
+                    <div class="input-box">
+                        <input type="text" name="username_1" placeholder="Username">
+                    </div>
+
+                    <div class="input-box">
+                        <input type="text" name="password_1" placeholder="Password">
+                    </div>
+
+                    <div class="input-box">
+                        <input type="text" name="domain_1" placeholder="Domain">
+                    </div>
+                </div>
+
+                <div class="group-controls" id="group-controls-1">
+                    <button type="button" onclick="removeGroupContent(1)">🗑️ Delete</button>
+                </div>
+            </div>
+        </form>
+
+        <hr>
+
+        <button type="button" id="addGroupButton" onclick="addNewGroup()">➕ Add new group</button>
+    </div>
+</body>
+
+</html>

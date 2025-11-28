@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustBox Login</title>
+    <script src="https://kit.fontawesome.com/4fae0f3553.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="loginV3.css">
+    <script src="loginV3.js"></script>
+</head>
+
+<body>
+
+    <div class="top-text">
+        <img src="trustbox-logo.png" class="logo" alt="">
+        <h2>Welcome to TrustBox</h2>
+        <p class="subtitle">Secure. Simple. Yours.<br>Your passwords, safely stored and managed</p>
+    </div>
+
+    <div class="wrapper">
+        <form>
+
+            <h3 class="form-title">Sign In</h3>
+            <p class="form-subtitle">Access your secure password vault</p>
+
+            <div class="input-box">
+                <i class="fa-solid fa-envelope icon-left"></i>
+                <input type="email" placeholder="user123@gmail.com" required>
+            </div>
+
+            <div class="input-box">
+                <i class="fa-solid fa-lock icon-left"></i>
+                <input type="password" placeholder="Password" required id="myInput">
+                <i class="fa-solid fa-eye icon-right"></i>
+            </div>
+
+            <div class="show-Remember">
+                <label><input type="checkbox" onclick="myFunction()">Show Password</label>
+                <!-- ⭐ FIXED: Link werkt nu wél ⭐ -->
+                <a href="forgotpasswordV3.html">Forgot password?</a>
+
+            </div>
+
+
+
+
+            <button type="submit" class="btn" onclick="location.href='mvpV3.html'">Sign In</button>
+
+            <div class="register-link">
+                <p>Don't have an account? <a href="registerV3.html">Create one</a></p>
+            </div>
+
+
+
+        </form>
+    </div>
+
+    <p class="footer-text">Your data is encrypted and secure 🔒</p>
+
+</body>
+
+</html>
