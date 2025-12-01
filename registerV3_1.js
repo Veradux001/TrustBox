@@ -19,16 +19,15 @@ function myFunction() {
 
 // Zorg ervoor dat de code pas wordt uitgevoerd nadat de HTML-structuur is geladen.
 document.addEventListener('DOMContentLoaded', () => {
-    // Vanaf hier weet je zeker dat #registerForm bestaat.
-    // Koppel de event listener aan het formulier
     const form = document.getElementById('registerForm');
 
-    // Als de browser de DOM-ready check doorloopt, KAN 'form' alleen null zijn als de ID fout is.
-    // Om 100% zeker te zijn, kun je een check toevoegen (hoewel onnodig als de HTML klopt).
     if (!form) {
         console.error("Fout: Kon formulier met ID 'registerForm' niet vinden.");
         return;
     }
+
+    // Selecteer de knop om de status te kunnen wijzigen
+    const submitButton = form.querySelector('button[type="submit"]');
 
     // Luister naar de submit-actie van het formulier
     form.addEventListener('submit', async function (e) {
@@ -39,8 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = form.email.value.trim();
         const password = form.password.value;
         const confirmPassword = form.confirmPassword.value;
-        const authorizedPerson = form.authorizedPerson.value.trim(); // Optioneel
-        const authorizedEmail = form.authorizedEmail.value.trim();   // Optioneel
+        const authorizedPerson = form.authorizedPerson.value.trim();
+        const authorizedEmail = form.authorizedEmail.value.trim();
         const agree = form.agree.checked;
 
         // 1. Client-side Validatie
@@ -59,6 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // --- START LAADSTATUS (Visuele feedback voor de gebruiker) ---
+        submitButton.disabled = true;
+        submitButton.textContent = 'Bezig met aanmaken...';
+        // --- EINDE LAADSTATUS ---
+
         // 2. Data object voor de server
         const data = {
             username: username,
@@ -71,7 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Stuur gegevens naar de Node.js server via fetch (als JSON)
         try {
-            const serverUrl = '/register';
+            // OPGELOST: Gebruik de volledige absolute URL van de server
+            const serverUrl = 'https://sftpgo.diemitchell.com:3000/register';
             const response = await fetch(serverUrl, {
                 method: 'POST',
                 headers: {
@@ -80,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(data)
             });
 
-            // De server stuurt bij succes of fouten een tekstuele response
             const resultText = await response.text();
 
             if (response.ok) { // Controleert op HTTP status 200-299
@@ -89,14 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = 'loginV3.html';
 
             } else {
-                // Foutafhandeling: Probeer een duidelijke foutmelding te tonen
+                // Foutafhandeling
                 let errorMessage = resultText;
                 try {
-                    // Probeer de fout als JSON te lezen, voor het geval de server JSON stuurt
                     const errorJson = JSON.parse(resultText);
                     errorMessage = errorJson.message || resultText;
                 } catch (e) {
-                    // Als de response geen geldige JSON is, gebruik dan de ruwe tekst van de server
+                    // Geen geldige JSON, gebruik de ruwe tekst
                 }
                 alert(`Fout bij registratie: ${errorMessage}`);
             }
@@ -104,6 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Netwerkfout bij registratie:', error);
             alert('Er is een netwerkfout opgetreden. Kan geen verbinding maken met de server. Controleer of de server draait en de CORS-instellingen correct zijn.');
+        } finally {
+            // --- EINDE LAADSTATUS (WORDT ALTIJD UITGEVOERD) ---
+            submitButton.disabled = false;
+            submitButton.textContent = 'Create Account';
+            // --- EINDE LAADSTATUS ---
         }
     });
 });
