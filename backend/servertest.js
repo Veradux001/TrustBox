@@ -80,8 +80,8 @@ const config = {
 };
 
 // --- 2. Middleware Instellen ---
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // SECURITY: Restrict CORS to specific origins only
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000'];
 app.use(cors({
@@ -121,6 +121,8 @@ app.get('/api/getData', async (req, res) => {
         ORDER BY GroupId ASC;
     `;
 
+    if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
+
     try {
         const request = pool.request();
         const result = await request.query(selectQuery);
@@ -143,6 +145,8 @@ app.get('/api/getData', async (req, res) => {
 // Versleutelt het wachtwoord voordat het wordt opgeslagen
 app.post('/api/saveData', async (req, res) => {
     const { GroupId, Username, Password, Domain } = req.body;
+
+    if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
 
     if (!GroupId || !Username || !Password || !Domain) {
         return res.status(400).json({ message: 'Alle GroupId, Username, Password en Domain velden zijn verplicht.' });
@@ -176,6 +180,8 @@ app.post('/api/saveData', async (req, res) => {
 app.put('/api/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
     const { Username, Password, Domain } = req.body;
+
+    if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
 
     if (!Username || !Domain) {
         return res.status(400).json({ message: 'Username en Domain velden zijn verplicht voor update.' });
@@ -232,8 +238,10 @@ app.put('/api/data/:groupId', async (req, res) => {
 app.delete('/api/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
 
+    if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
+
     const deleteQuery = `
-        DELETE FROM FormSubmission 
+        DELETE FROM FormSubmission
         WHERE GroupId = @GroupId;
     `;
 
@@ -254,8 +262,6 @@ app.delete('/api/data/:groupId', async (req, res) => {
 });
 
 // --- 7. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
-const PORT = process.env.PORT || 3000;
-
 initializeDatabase().then(() => {
     app.listen(port, () => {
         console.log(`Server draait op http://localhost:${port}`);

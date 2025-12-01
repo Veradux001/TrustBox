@@ -8,7 +8,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware om URL-gecodeerde formuliergegevens te verwerken (nodig voor HTML forms)
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Middleware om statische bestanden (zoals je HTML/CSS) te serveren
 // Zorgt ervoor dat je een 'public' map kunt gebruiken voor frontend-bestanden.
@@ -53,11 +53,26 @@ app.post('/register', async (req, res) => {
     // Haal de gegevens van het formulier (via de 'name' attributen) op
     const { username, email, password, AuthorizedPerson, AuthorizedEmail } = req.body;
 
+    if (!username || !email || !password) {
+        return res.status(400).send('Fout: Gebruikersnaam, E-mail en Wachtwoord zijn verplicht.');
+    }
+
+    // Validate and sanitize input lengths
+    if (username.length > 50) {
+        return res.status(400).send('Fout: Gebruikersnaam mag maximaal 50 karakters lang zijn.');
+    }
+    if (email.length > 100) {
+        return res.status(400).send('Fout: E-mail mag maximaal 100 karakters lang zijn.');
+    }
+
     const finalAuthPerson = (AuthorizedPerson && AuthorizedPerson.trim() !== '') ? AuthorizedPerson.trim() : null;
     const finalAuthEmail = (AuthorizedEmail && AuthorizedEmail.trim() !== '') ? AuthorizedEmail.trim() : null;
 
-    if (!username || !email || !password) {
-        return res.status(400).send('Fout: Gebruikersnaam, E-mail en Wachtwoord zijn verplicht.');
+    if (finalAuthPerson && finalAuthPerson.length > 100) {
+        return res.status(400).send('Fout: AuthorizedPerson mag maximaal 100 karakters lang zijn.');
+    }
+    if (finalAuthEmail && finalAuthEmail.length > 100) {
+        return res.status(400).send('Fout: AuthorizedEmail mag maximaal 100 karakters lang zijn.');
     }
 
     // Validate email format
@@ -75,7 +90,6 @@ app.post('/register', async (req, res) => {
     try {
         // 1. Wachtwoord HASHEN (ASYNCHROON)
         const hash = await bcrypt.hash(password, saltRounds);
-        console.log(`Wachtwoord gehasht voor ${username}.`);
 
         // 2. Database INSERT using existing pool
 
@@ -140,11 +154,9 @@ app.post('/login', async (req, res) => {
 
         if (match) {
             // Wachtwoorden komen overeen
-            console.log(`Gebruiker ${username} succesvol ingelogd.`);
             res.status(200).send('Inloggen succesvol! Welkom.');
         } else {
             // Wachtwoorden komen niet overeen (Geef dezelfde foutmelding voor veiligheid)
-            console.log(`Mislukte inlogpoging voor ${username}.`);
             res.status(401).send('Fout: Onjuiste gebruikersnaam of wachtwoord.');
         }
 

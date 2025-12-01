@@ -24,7 +24,11 @@ const IV_LENGTH = 16; // Voor AES-256-CBC
 // --- Input Validation Functions ---
 
 /**
- * Validates integer input
+ * Validates that a value is a valid integer
+ * @param {*} value - The value to validate
+ * @param {string} fieldName - The name of the field being validated (for error messages)
+ * @returns {number} The parsed integer value
+ * @throws {Error} If the value is not a valid integer
  */
 function validateInteger(value, fieldName) {
     const parsed = parseInt(value, 10);
@@ -35,7 +39,12 @@ function validateInteger(value, fieldName) {
 }
 
 /**
- * Validates string length
+ * Validates that a string does not exceed a maximum length
+ * @param {*} value - The value to validate
+ * @param {string} fieldName - The name of the field being validated (for error messages)
+ * @param {number} maxLength - The maximum allowed length
+ * @returns {string} The trimmed string value
+ * @throws {Error} If the value is not a string or exceeds the maximum length
  */
 function validateStringLength(value, fieldName, maxLength) {
     if (typeof value !== 'string') {
@@ -50,7 +59,9 @@ function validateStringLength(value, fieldName, maxLength) {
 // --- Encryptie/Decryptie Functies ---
 
 /**
- * Versleutelt een tekststring met AES-256-CBC.
+ * Encrypts a text string using AES-256-CBC encryption
+ * @param {string} text - The plaintext string to encrypt
+ * @returns {string} The encrypted text in format "iv:encryptedData" (both as hex strings)
  */
 function encrypt(text) {
     // Genereer een nieuwe IV van 16 bytes bij elke versleuteling
@@ -67,7 +78,9 @@ function encrypt(text) {
 }
 
 /**
- * Ontsleutelt een tekststring met AES-256-CBC.
+ * Decrypts a text string using AES-256-CBC decryption
+ * @param {string} text - The encrypted text in format "iv:encryptedData" (both as hex strings)
+ * @returns {string} The decrypted plaintext string, or empty string if decryption fails
  */
 function decrypt(text) {
     if (!text || text.trim() === '') return '';
@@ -113,8 +126,8 @@ const config = {
 };
 
 // --- 2. Middleware Instellen ---
-app.use(express.json()); // Nodig voor JSON data van fetch()
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' })); // Nodig voor JSON data van fetch()
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // SECURITY: Restrict CORS to specific origins only
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000'];
 app.use(cors({
