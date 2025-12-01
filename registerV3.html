@@ -34,6 +34,9 @@
             <h3 class="form-title">Create Account</h3>
             <p class="form-subtitle">Start securing your passwords today</p>
 
+            <!-- Error/Success Message Container -->
+            <div id="messageContainer" style="display: none; padding: 10px; margin-bottom: 15px; border-radius: 4px;"></div>
+
             <!-- UserName -->
             <div class="input-box">
                 <i class="fa-solid fa-user icon-left"></i>
@@ -49,15 +52,16 @@
             <!-- Password -->
             <div class="input-box">
                 <i class="fa-solid fa-lock icon-left"></i>
-                <input type="password" name="password" placeholder="Password" id="myInput" required>
-                <i class="fa-solid fa-eye icon-right" onclick="myFunction()"></i>
+                <input type="password" name="password" placeholder="Password (min. 8 characters)" id="passwordInput" required>
+                <i class="fa-solid fa-eye icon-right" id="togglePassword" style="cursor: pointer;"></i>
             </div>
+            <div id="passwordStrength" style="margin-top: -10px; margin-bottom: 10px; font-size: 12px;"></div>
 
             <!-- Confirm Password -->
             <div class="input-box">
                 <i class="fa-solid fa-lock icon-left"></i>
-                <input type="password" name="confirmPassword" placeholder="Confirm Password" id="myInput2" required>
-                <i class="fa-solid fa-eye icon-right" onclick="myFunction()"></i>
+                <input type="password" name="confirmPassword" placeholder="Confirm Password" id="confirmPasswordInput" required>
+                <i class="fa-solid fa-eye icon-right" id="toggleConfirmPassword" style="cursor: pointer;"></i>
             </div>
 
             <!-- Name authorizedPerson -->
@@ -72,10 +76,6 @@
                 <input type="email" name="authorizedEmail" placeholder="Authorized Email">
             </div>
 
-            <div class="showpassword">
-                <input type="checkbox" onclick="myFunction()">Show Password
-            </div>
-            <br>
 
             <!-- Checkbox: Terms of Service / Privacy Policy -->
             <div class="terms-container">
