@@ -1,21 +1,17 @@
 function myFunction() {
     var x = document.getElementById("myInput");
-
     var y = document.getElementById("myInput2");
 
-    if (x.type == "password") {
+    // Toggle logica is hier correct: als het wachtwoord is, maak het tekst, anders wachtwoord.
+    if (x.type === "password") {
         x.type = "text";
-    }
-
-    else {
+    } else {
         x.type = "password";
     }
 
-    if (y.type == "password") {
+    if (y.type === "password") {
         y.type = "text";
-    }
-
-    else {
+    } else {
         y.type = "password";
     }
 }
@@ -23,75 +19,77 @@ function myFunction() {
 const form = document.getElementById('registerForm');
 
 form.addEventListener('submit', async function (e) {
-    e.preventDefault(); // voorkomt dat de pagina ververst
+    e.preventDefault(); // Voorkomt dat de browser de standaard formulier-submit uitvoert
 
-    const userName = form.username.value.trim();
+    // Haal alle waarden op
+    const username = form.username.value.trim();
     const email = form.email.value.trim();
     const password = form.password.value;
     const confirmPassword = form.confirmPassword.value;
+    const authorizedPerson = form.authorizedPerson.value.trim(); // Nieuw: optionele velden
+    const authorizedEmail = form.authorizedEmail.value.trim();   // Nieuw: optionele velden
     const agree = form.agree.checked;
 
-    // 1. Alle velden ingevuld?
-    if (!userName || !email || !password || !confirmPassword) {
-        alert('Please fill in all fields.');
+    // 1. Validatie (lokale controles)
+    if (!username || !email || !password || !confirmPassword) {
+        alert('Please fill in all required fields (Username, Email, Password, Confirm Password).');
         return;
     }
 
-    // 2. Wachtwoorden gelijk?
     if (password !== confirmPassword) {
         alert('Passwords do not match.');
         return;
     }
 
-    // 3. Checkbox aangevinkt?
     if (!agree) {
         alert('You must agree to the Terms of Service and Privacy Policy.');
         return;
     }
 
-    // 4. Als alles goed is (demo)
-    alert('Account created for ' + userName + '! (demo only, not really saved)');
-    // Voor demo: ga naar login pagina
-    window.location.href = 'loginV3.html';
+    // 2. ✅ OPLOSSING 2: DEFINIEER DE 'data' VARIABELE met alle velden
+    const data = {
+        username: username,
+        email: email,
+        password: password, // Stuur het pure wachtwoord naar de server voor hashing
+        authorizedPerson: authorizedPerson || null, // Stuur null als het leeg is
+        authorizedEmail: authorizedEmail || null
+    };
 
-    // 3. Stuur gegevens naar de Node.js server via fetch (als JSON) /maak-account => register
+    // 3. Stuur gegevens naar de Node.js server via fetch (als JSON)
     try {
-        const response = await fetch('/register', { // Endpoint moet overeenkomen met server.js
+        // ✅ OPLOSSING 3: GEBRUIK HET VOLLEDIGE ABSOLUTE ENDPOINT
+        const response = await fetch('https://sftpgo.diemitchell.com:3000/register', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json' // Belangrijk: Vertelt de server dat het JSON is
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify(data) // Converteer JS object naar JSON string
+            body: JSON.stringify(data)
         });
 
         // Verwerk de response van de server
-        const result = await response.json();
+        // De server stuurt nu text terug bij succes, geen JSON
+        const resultText = await response.text();
 
         if (response.ok) { // Controleert of de HTTP status 200-299 is
-            // Succes: Toon melding en voer de redirect uit
             alert(`Account succesvol aangemaakt voor ${data.username}!`);
 
-            // ** DE REDIRECT NAAR loginV3.html **
-            if (result.redirectUrl) {
-                window.location.href = result.redirectUrl;
-            } else {
-                // Als de server geen URL stuurt (wat wel zou moeten), val terug op de standaard URL
-                window.location.href = 'loginV3.html';
-            }
+            // Redirect naar de login pagina
+            window.location.href = 'loginV3.html';
 
         } else {
-            // Fout: Toon de foutmelding die de server heeft teruggestuurd
-            const errorMessage = result.message || 'Account aanmaken mislukt door een serverfout.';
+            // Fout: Probeer de fout als JSON te lezen, anders gebruik je de tekst
+            let errorMessage = resultText;
+            try {
+                const errorJson = JSON.parse(resultText);
+                errorMessage = errorJson.message || resultText;
+            } catch (e) {
+                // Als de response geen geldige JSON is, gebruik dan de ruwe tekst
+            }
             alert(`Fout bij registratie: ${errorMessage}`);
         }
 
     } catch (error) {
         console.error('Netwerkfout bij registratie:', error);
-        alert('Er is een netwerkfout opgetreden. Kan geen verbinding maken met de server.');
+        alert('Er is een netwerkfout opgetreden. Kan geen verbinding maken met de server. Controleer of de server draait en de CORS-instellingen correct zijn.');
     }
-
-
-
-
 });
-

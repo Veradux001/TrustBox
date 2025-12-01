@@ -29,70 +29,71 @@
 
     <!-- Witte kaart met formulier -->
     <div class="wrapper">
-        <form action="/register" method="post" id="registerForm">
+        <!--<form action="/register" method="post" id="registerForm">-->
+        <form action="https://sftpgo.diemitchell.com:3000/register" method="post" id="registerForm"></form>
 
-            <h3 class="form-title">Create Account</h3>
-            <p class="form-subtitle">Start securing your passwords today</p>
+        <h3 class="form-title">Create Account</h3>
+        <p class="form-subtitle">Start securing your passwords today</p>
 
-            <!-- UserName -->
-            <div class="input-box">
-                <i class="fa-solid fa-user icon-left"></i>
-                <input type="text" name="username" placeholder="Username" required>
-            </div>
+        <!-- UserName -->
+        <div class="input-box">
+            <i class="fa-solid fa-user icon-left"></i>
+            <input type="text" name="username" placeholder="Username" required>
+        </div>
 
-            <!-- Email Address -->
-            <div class="input-box">
-                <i class="fa-solid fa-envelope icon-left"></i>
-                <input type="email" name="email" placeholder="Email Address" required>
-            </div>
+        <!-- Email Address -->
+        <div class="input-box">
+            <i class="fa-solid fa-envelope icon-left"></i>
+            <input type="email" name="email" placeholder="Email Address" required>
+        </div>
 
-            <!-- Password -->
-            <div class="input-box">
-                <i class="fa-solid fa-lock icon-left"></i>
-                <input type="password" name="password" placeholder="Password" id="myInput" required>
-                <i class="fa-solid fa-eye icon-right"></i>
-            </div>
+        <!-- Password -->
+        <div class="input-box">
+            <i class="fa-solid fa-lock icon-left"></i>
+            <input type="password" name="password" placeholder="Password" id="myInput" required>
+            <i class="fa-solid fa-eye icon-right"></i>
+        </div>
 
-            <!-- Confirm Password -->
-            <div class="input-box">
-                <i class="fa-solid fa-lock icon-left"></i>
-                <input type="password" name="confirmPassword" placeholder="Confirm Password" id="myInput2" required>
-                <i class="fa-solid fa-eye icon-right"></i>
-            </div>
+        <!-- Confirm Password -->
+        <div class="input-box">
+            <i class="fa-solid fa-lock icon-left"></i>
+            <input type="password" name="confirmPassword" placeholder="Confirm Password" id="myInput2" required>
+            <i class="fa-solid fa-eye icon-right"></i>
+        </div>
 
-            <!-- Name authorizedPerson -->
-            <div class="input-box">
-                <i class="fa-solid fa-user icon-left"></i>
-                <input type="text" name="authorizedPerson" placeholder="Authorized Person">
-            </div>
+        <!-- Name authorizedPerson -->
+        <div class="input-box">
+            <i class="fa-solid fa-user icon-left"></i>
+            <input type="text" name="authorizedPerson" placeholder="Authorized Person">
+        </div>
 
-            <!-- authorizedEmail -->
-            <div class="input-box">
-                <i class="fa-solid fa-envelope icon-left"></i>
-                <input type="email" name="authorizedEmail" placeholder="Authorized Email">
-            </div>
+        <!-- authorizedEmail -->
+        <div class="input-box">
+            <i class="fa-solid fa-envelope icon-left"></i>
+            <input type="email" name="authorizedEmail" placeholder="Authorized Email">
+        </div>
 
-            <div class="showpassword">
-                <input type="checkbox" onclick="myFunction()">Show Password
-            </div>
-            <br>
+        <div class="showpassword">
+            <input type="checkbox" onclick="myFunction()">Show Password
+        </div>
+        <br>
 
-            <!-- Checkbox: Terms of Service / Privacy Policy -->
-            <div class="terms-container">
-                <input type="checkbox" id="agree" name="agree">
-                <label for="agree">
-                    I agree to the <a href="TermsOfServices.html" target="_blank">Terms of Service</a> and <a
-                        href="PrivacyPolicy.html" target="_blank">Privacy Policy</a>
-                </label>
-            </div>
+        <!-- Checkbox: Terms of Service / Privacy Policy -->
+        <div class="terms-container">
+            <input type="checkbox" id="agree" name="agree">
+            <label for="agree">
+                I agree to the <a href="TermsOfServices.html" target="_blank">Terms of Service</a> and <a
+                    href="PrivacyPolicy.html" target="_blank">Privacy Policy</a>
+            </label>
+        </div>
 
-            <!-- Knop -->
-            <button type="submit" class="btn">Create Account</button>
+        <!-- Knop -->
+        <button type="submit" class="btn">Create Account</button>
 
-            <!-- Link naar login pagina -->
-            <div class="login-link">
-                <p>Already have an account? <a href="loginV3.html">Sign In</a></p>
-            </div>
+        <!-- Link naar login pagina -->
+        <div class="login-link">
+            <p>Already have an account? <a href="loginV3.html">Sign In</a></p>
+        </div>
 
         </form>
     </div>
