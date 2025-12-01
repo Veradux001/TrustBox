@@ -5,6 +5,7 @@ const sql = require('mssql');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -125,6 +126,18 @@ const config = {
     }
 };
 
+// Database configuration for user registration
+const registerConfig = {
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_DATABASE_REGISTER,
+    options: {
+        encrypt: process.env.DB_ENCRYPT === 'true',
+        trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true'
+    }
+};
+
 // --- 2. Middleware Instellen ---
 app.use(express.json({ limit: '1mb' })); // Nodig voor JSON data van fetch()
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
@@ -145,8 +158,9 @@ app.get('/', (_req, res) => {
 });
 
 
-// Globale databaseverbinding pool
+// Globale databaseverbinding pools
 let pool;
+let registerPool;
 
 // Functie om de databaseverbinding te initialiseren
 async function initializeDatabase() {
@@ -155,6 +169,14 @@ async function initializeDatabase() {
         console.log("Databaseverbinding is succesvol opgestart.");
     } catch (err) {
         console.error("FATALE FOUT: Databaseverbinding is mislukt:", err.message);
+        // De server sluit niet af, maar we loggen de fout.
+    }
+
+    try {
+        registerPool = await new sql.ConnectionPool(registerConfig).connect();
+        console.log("Registratie databaseverbinding is succesvol opgestart.");
+    } catch (err) {
+        console.error("FATALE FOUT: Registratie databaseverbinding is mislukt:", err.message);
         // De server sluit niet af, maar we loggen de fout.
     }
 }
@@ -318,7 +340,165 @@ app.delete('/api/data/:groupId', async (req, res) => {
     }
 });
 
-// --- 7. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
+// ** --- 7. USER REGISTRATION ENDPOINT --- **
+app.post('/api/register', async (req, res) => {
+    const { username, email, password, AuthorizedPerson, AuthorizedEmail } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !password) {
+        return res.status(400).json({
+            success: false,
+            message: 'Username, email, and password are required.'
+        });
+    }
+
+    // Validate input lengths
+    if (username.length < 3 || username.length > 50) {
+        return res.status(400).json({
+            success: false,
+            message: 'Username must be between 3 and 50 characters.'
+        });
+    }
+
+    if (email.length > 100) {
+        return res.status(400).json({
+            success: false,
+            message: 'Email must not exceed 100 characters.'
+        });
+    }
+
+    // Validate username format (alphanumeric, underscore, hyphen only)
+    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!usernameRegex.test(username)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Username can only contain letters, numbers, underscores, and hyphens.'
+        });
+    }
+
+    // Validate email format (RFC 5322 compliant)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid email format.'
+        });
+    }
+
+    // Validate password strength (minimum 8 characters)
+    if (password.length < 8) {
+        return res.status(400).json({
+            success: false,
+            message: 'Password must be at least 8 characters long.'
+        });
+    }
+
+    // Sanitize optional fields
+    const finalAuthPerson = (AuthorizedPerson && AuthorizedPerson.trim() !== '')
+        ? AuthorizedPerson.trim()
+        : null;
+    const finalAuthEmail = (AuthorizedEmail && AuthorizedEmail.trim() !== '')
+        ? AuthorizedEmail.trim()
+        : null;
+
+    // Validate optional fields if provided
+    if (finalAuthPerson && finalAuthPerson.length > 100) {
+        return res.status(400).json({
+            success: false,
+            message: 'AuthorizedPerson must not exceed 100 characters.'
+        });
+    }
+
+    if (finalAuthEmail && finalAuthEmail.length > 100) {
+        return res.status(400).json({
+            success: false,
+            message: 'AuthorizedEmail must not exceed 100 characters.'
+        });
+    }
+
+    if (finalAuthEmail && !emailRegex.test(finalAuthEmail)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid AuthorizedEmail format.'
+        });
+    }
+
+    if (!registerPool) {
+        return res.status(503).json({
+            success: false,
+            message: 'Database not available.'
+        });
+    }
+
+    try {
+        // Check for duplicate username or email
+        const checkQuery = `
+            SELECT COUNT(*) as count
+            FROM tbl_Users
+            WHERE Username = @username OR Email = @email
+        `;
+
+        const checkResult = await registerPool.request()
+            .input('username', sql.VarChar(50), username)
+            .input('email', sql.VarChar(100), email)
+            .query(checkQuery);
+
+        if (checkResult.recordset[0].count > 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'Username or email already exists.'
+            });
+        }
+
+        // Hash the password with bcrypt (12 salt rounds for enhanced security)
+        const passwordHash = await bcrypt.hash(password, 12);
+
+        // Insert the new user
+        const insertQuery = `
+            INSERT INTO tbl_Users (Username, Email, PasswordHash, AuthorizedPerson, AuthorizedEmail)
+            VALUES (@username, @email, @passwordHash, @authPerson, @authEmail)
+        `;
+
+        const result = await registerPool.request()
+            .input('username', sql.VarChar(50), username)
+            .input('email', sql.VarChar(100), email)
+            .input('passwordHash', sql.Char(60), passwordHash)
+            .input('authPerson', sql.VarChar(100), finalAuthPerson)
+            .input('authEmail', sql.VarChar(100), finalAuthEmail)
+            .query(insertQuery);
+
+        if (result.rowsAffected[0] === 1) {
+            console.log(`User ${username} successfully registered.`);
+            res.status(201).json({
+                success: true,
+                message: 'Account created successfully!'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Registration failed. No rows affected.'
+            });
+        }
+
+    } catch (err) {
+        console.error("Database error during registration:", err.message);
+
+        // Check for specific SQL errors
+        if (err.message.includes('UNIQUE KEY') || err.message.includes('duplicate')) {
+            return res.status(409).json({
+                success: false,
+                message: 'Username or email already exists.'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error during registration.'
+        });
+    }
+});
+
+// --- 8. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
 initializeDatabase().then(() => {
     app.listen(port, () => {
         console.log(`CRUD Server draait op http://localhost:${port}.`);
