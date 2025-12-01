@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Stuur gegevens naar de Node.js server via fetch (als JSON)
         try {
             // VERVANG 'UW_SERVER_URL_HIER' met het daadwerkelijke registratie-endpoint van uw server
-            const serverUrl = 'https://trustbox.nl/api/register';
+            const serverUrl = 'https://172.18.240.240:3000/register';
 
             const response = await fetch(serverUrl, {
                 method: 'POST',
