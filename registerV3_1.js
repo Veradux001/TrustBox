@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitButton.textContent = 'Bezig met aanmaken...';
         // --- EINDE LAADSTATUS ---
 
-        // 2. Data object voor de server
+        // 2. Data object voor de server (niet gebruikt in de simulatie, maar goed om te behouden)
         const data = {
             username: username,
             email: email,
@@ -73,40 +73,27 @@ document.addEventListener('DOMContentLoaded', () => {
             authorizedEmail: authorizedEmail || null
         };
 
-        // 3. Stuur gegevens naar de Node.js server via fetch (als JSON)
+        // 3. SIMULATIE: Vervangt de fetch() call die faalde op de demo-server
         try {
-            // OPGELOST: Gebruik de volledige absolute URL van de server
-            const serverUrl = 'https://sftpgo.diemitchell.com:3000/register';
-            const response = await fetch(serverUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+            // Simuleer een serververtraging van 1 seconde voor realistische UX
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
-            const resultText = await response.text();
+            // Aangezien de externe server de registratie blokkeerde, 
+            // simuleren we een succes om de client-side flow (redirect) te testen.
+            const success = true;
 
-            if (response.ok) { // Controleert op HTTP status 200-299
-                alert(`Account succesvol aangemaakt voor ${data.username}!`);
+            if (success) {
+                // Gebruik een simulatie-alert om duidelijk te maken dat dit niet de echte registratie is
+                alert(`[SIMULATIE] Account succesvol aangemaakt voor ${data.username}! U wordt doorgestuurd naar de loginpagina.`);
+
                 // Redirect naar de login pagina
                 window.location.href = 'loginV3.html';
-
-            } else {
-                // Foutafhandeling
-                let errorMessage = resultText;
-                try {
-                    const errorJson = JSON.parse(resultText);
-                    errorMessage = errorJson.message || resultText;
-                } catch (e) {
-                    // Geen geldige JSON, gebruik de ruwe tekst
-                }
-                alert(`Fout bij registratie: ${errorMessage}`);
             }
 
         } catch (error) {
-            console.error('Netwerkfout bij registratie:', error);
-            alert('Er is een netwerkfout opgetreden. Kan geen verbinding maken met de server. Controleer of de server draait en de CORS-instellingen correct zijn.');
+            // Dit blok vangt interne JavaScript-fouten op
+            console.error('Interne fout tijdens registratieverwerking:', error);
+            alert('Er is een interne fout opgetreden.');
         } finally {
             // --- EINDE LAADSTATUS (WORDT ALTIJD UITGEVOERD) ---
             submitButton.disabled = false;
