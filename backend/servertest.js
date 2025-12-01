@@ -61,8 +61,8 @@ function decrypt(text) {
 
         return decrypted;
     } catch (e) {
-        console.error("Decryptie fout (waarschijnlijk verkeerde sleutel of corrupt data):", e);
-        return 'DECRYPTIE_FOUT';
+        console.error("Decryptie fout (waarschijnlijk verkeerde sleutel of corrupt data):", e.message);
+        return '';
     }
 }
 
@@ -105,9 +105,6 @@ let pool;
 async function initializeDatabase() {
     try {
         pool = await sql.connect(config);
-        if (ENCRYPTION_KEY.length !== 32) {
-            console.warn("!! WARSCHUWING !! ENCRYPTION_KEY moet exact 32 karakters lang zijn voor AES-256. Huidige lengte:", ENCRYPTION_KEY.length);
-        }
         console.log("Databaseverbinding is succesvol opgestart.");
     } catch (err) {
         console.error("FATALE FOUT: Databaseverbinding is mislukt:", err.message);
@@ -246,10 +243,10 @@ app.delete('/api/data/:groupId', async (req, res) => {
         const result = await request.query(deleteQuery);
 
         if (result.rowsAffected[0] === 0) {
-            return res.status(404).send('Geen record gevonden met die GroupId om te verwijderen.');
+            return res.status(404).json({ message: 'Geen record gevonden met die GroupId om te verwijderen.' });
         }
 
-        res.status(200).send(`Data voor Groep ${groupId} succesvol verwijderd.`);
+        res.status(200).json({ message: `Data voor Groep ${groupId} succesvol verwijderd.` });
     } catch (err) {
         console.error("SQL Fout bij verwijdering: ", err);
         res.status(500).json({ message: 'Fout bij het verwijderen van data op de server.' });

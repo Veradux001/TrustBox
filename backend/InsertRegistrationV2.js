@@ -30,6 +30,9 @@ const config = {
 // De SALT ROUNDS bepalen de sterkte van de hash. 10 is de standaard.
 const saltRounds = 10;
 
+// Email validation regex
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Globale databaseverbinding pool
 let pool;
 
@@ -54,6 +57,16 @@ app.post('/register', async (req, res) => {
 
     if (!username || !email || !password) {
         return res.status(400).send('Fout: Gebruikersnaam, E-mail en Wachtwoord zijn verplicht.');
+    }
+
+    // Validate email format
+    if (!emailRegex.test(email)) {
+        return res.status(400).send('Fout: Ongeldig e-mailadres formaat.');
+    }
+
+    // Validate password strength (minimum 8 characters)
+    if (password.length < 8) {
+        return res.status(400).send('Fout: Wachtwoord moet minimaal 8 karakters lang zijn.');
     }
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
