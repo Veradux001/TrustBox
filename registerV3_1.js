@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Stuur gegevens naar de Node.js server via fetch (als JSON)
         try {
-            const serverUrl = 'https://sftpgo.diemitchell.com:3000/register';
+            const serverUrl = '/register';
             const response = await fetch(serverUrl, {
                 method: 'POST',
                 headers: {
