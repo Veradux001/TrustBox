@@ -5,6 +5,7 @@ const sql = require('mssql');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -318,7 +319,113 @@ app.delete('/api/data/:groupId', async (req, res) => {
     }
 });
 
-// --- 7. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
+// ** --- 7. POST ENDPOINT VOOR GEBRUIKERS REGISTRATIE --- **
+app.post('/api/register', async (req, res) => {
+    const { username, email, password, authorizedPerson, authorizedEmail } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !password) {
+        return res.status(400).json({
+            message: 'Username, email, and password are required.'
+        });
+    }
+
+    // Email validation regex
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+    // Validate input lengths and format
+    if (username.length < 3 || username.length > 50) {
+        return res.status(400).json({
+            message: 'Username must be between 3 and 50 characters.'
+        });
+    }
+
+    if (!emailRegex.test(email) || email.length > 100) {
+        return res.status(400).json({
+            message: 'Invalid email address.'
+        });
+    }
+
+    if (password.length < 8) {
+        return res.status(400).json({
+            message: 'Password must be at least 8 characters long.'
+        });
+    }
+
+    // Validate username format (alphanumeric, underscore, hyphen only)
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+        return res.status(400).json({
+            message: 'Username can only contain letters, numbers, underscores, and hyphens.'
+        });
+    }
+
+    // Validate authorized email if provided
+    if (authorizedEmail && (!emailRegex.test(authorizedEmail) || authorizedEmail.length > 100)) {
+        return res.status(400).json({
+            message: 'Invalid authorized email address.'
+        });
+    }
+
+    // Sanitize optional fields
+    const finalAuthPerson = (authorizedPerson && authorizedPerson.trim() !== '') ? authorizedPerson.trim() : null;
+    const finalAuthEmail = (authorizedEmail && authorizedEmail.trim() !== '') ? authorizedEmail.trim() : null;
+
+    if (finalAuthPerson && finalAuthPerson.length > 100) {
+        return res.status(400).json({
+            message: 'Authorized person name must not exceed 100 characters.'
+        });
+    }
+
+    if (!pool) {
+        return res.status(503).json({ message: 'Database not available.' });
+    }
+
+    try {
+        // Hash password with bcrypt (salt rounds: 12 for strong security)
+        const saltRounds = 12;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Insert into database
+        const insertQuery = `
+            INSERT INTO tbl_Users (Username, Email, PasswordHash, AuthorizedPerson, AuthorizedEmail)
+            VALUES (@Username, @Email, @PasswordHash, @AuthorizedPerson, @AuthorizedEmail);
+        `;
+
+        const request = pool.request();
+        request.input('Username', sql.VarChar(50), username.trim());
+        request.input('Email', sql.VarChar(100), email.trim());
+        request.input('PasswordHash', sql.Char(60), hashedPassword);
+        request.input('AuthorizedPerson', sql.VarChar(100), finalAuthPerson);
+        request.input('AuthorizedEmail', sql.VarChar(100), finalAuthEmail);
+
+        const result = await request.query(insertQuery);
+
+        if (result.rowsAffected[0] === 1) {
+            console.log(`User ${username} successfully registered.`);
+            res.status(201).json({
+                message: 'Registration successful! Your account has been created.',
+                username: username
+            });
+        } else {
+            res.status(500).json({ message: 'Registration failed. No rows affected.' });
+        }
+
+    } catch (err) {
+        // Check for duplicate username/email (UNIQUE constraint violation)
+        if (err.message.includes('UNIQUE KEY') || err.message.includes('duplicate')) {
+            return res.status(409).json({
+                message: 'Username or email already exists.'
+            });
+        }
+
+        console.error("Database error during registration:", err.message);
+        res.status(500).json({
+            message: 'Internal server error during registration.'
+        });
+    }
+});
+
+// --- 8. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
 initializeDatabase().then(() => {
     app.listen(port, () => {
         console.log(`CRUD Server draait op http://localhost:${port}.`);
