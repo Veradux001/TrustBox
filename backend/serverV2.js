@@ -9,6 +9,13 @@ const bcrypt = require('bcrypt');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// --- Validation Constants ---
+const USERNAME_MIN_LENGTH = 3;
+const USERNAME_MAX_LENGTH = 50;
+const EMAIL_MAX_LENGTH = 100;
+const PASSWORD_MIN_LENGTH = 8;
+const BCRYPT_SALT_ROUNDS = 12; // Industry standard for security
+
 // Load encryption key from environment variables
 const RAW_KEY = process.env.ENCRYPTION_KEY;
 if (!RAW_KEY) {
@@ -363,10 +370,10 @@ app.post('/api/register', async (req, res) => {
     try {
         // --- Input Validation ---
 
-        // Validate username (3-50 chars, alphanumeric + underscore/hyphen only)
-        if (typeof username !== 'string' || username.length < 3 || username.length > 50) {
+        // Validate username (alphanumeric + underscore/hyphen only)
+        if (typeof username !== 'string' || username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
             return res.status(400).json({
-                message: 'Username must be between 3 and 50 characters.'
+                message: `Username must be between ${USERNAME_MIN_LENGTH} and ${USERNAME_MAX_LENGTH} characters.`
             });
         }
         if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
@@ -375,18 +382,18 @@ app.post('/api/register', async (req, res) => {
             });
         }
 
-        // Validate email (RFC 5322 compliant, max 100 chars)
+        // Validate email (practical validation pattern, max 100 chars)
         const emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-        if (typeof email !== 'string' || !emailRegex.test(email) || email.length > 100) {
+        if (typeof email !== 'string' || !emailRegex.test(email) || email.length > EMAIL_MAX_LENGTH) {
             return res.status(400).json({
-                message: 'Please provide a valid email address (max 100 characters).'
+                message: `Please provide a valid email address (max ${EMAIL_MAX_LENGTH} characters).`
             });
         }
 
         // Validate password (minimum 8 chars)
-        if (typeof password !== 'string' || password.length < 8) {
+        if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH) {
             return res.status(400).json({
-                message: 'Password must be at least 8 characters long.'
+                message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`
             });
         }
 
@@ -433,8 +440,7 @@ app.post('/api/register', async (req, res) => {
         }
 
         // --- Hash Password with bcrypt ---
-        const saltRounds = 12; // Industry standard for security
-        const passwordHash = await bcrypt.hash(password, saltRounds);
+        const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
         // --- Insert New User into Database ---
         const insertQuery = `
@@ -445,7 +451,7 @@ app.post('/api/register', async (req, res) => {
         const insertRequest = registerPool.request();
         insertRequest.input('Username', sql.NVarChar(50), username);
         insertRequest.input('Email', sql.NVarChar(100), email);
-        insertRequest.input('PasswordHash', sql.Char(60), passwordHash); // bcrypt hashes are 60 chars
+        insertRequest.input('PasswordHash', sql.VarChar(60), passwordHash); // bcrypt hashes are 60 chars
         insertRequest.input('AuthorizedPerson', sql.NVarChar(100), authorizedPerson || null);
         insertRequest.input('AuthorizedEmail', sql.NVarChar(100), authorizedEmail || null);
 
