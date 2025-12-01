@@ -14,6 +14,7 @@ const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 50;
 const EMAIL_MAX_LENGTH = 100;
 const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 72; // bcrypt maximum input length
 const BCRYPT_SALT_ROUNDS = 12; // Industry standard for security
 
 // Load encryption key from environment variables
@@ -390,10 +391,10 @@ app.post('/api/register', async (req, res) => {
             });
         }
 
-        // Validate password (minimum 8 chars)
-        if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH) {
+        // Validate password (minimum 8 chars, maximum 72 chars for bcrypt)
+        if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH) {
             return res.status(400).json({
-                message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`
+                message: `Password must be between ${PASSWORD_MIN_LENGTH} and ${PASSWORD_MAX_LENGTH} characters long.`
             });
         }
 
@@ -451,7 +452,7 @@ app.post('/api/register', async (req, res) => {
         const insertRequest = registerPool.request();
         insertRequest.input('Username', sql.NVarChar(50), username);
         insertRequest.input('Email', sql.NVarChar(100), email);
-        insertRequest.input('PasswordHash', sql.VarChar(60), passwordHash); // bcrypt hashes are 60 chars
+        insertRequest.input('PasswordHash', sql.Char(60), passwordHash); // bcrypt hashes are exactly 60 chars (fixed-length)
         insertRequest.input('AuthorizedPerson', sql.NVarChar(100), authorizedPerson || null);
         insertRequest.input('AuthorizedEmail', sql.NVarChar(100), authorizedEmail || null);
 
