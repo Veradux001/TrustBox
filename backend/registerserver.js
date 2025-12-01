@@ -28,8 +28,8 @@ const config = {
 
 };
 
-// De SALT ROUNDS bepalen de sterkte van de hash. 10 is de standaard.
-const saltRounds = 10;
+// De SALT ROUNDS bepalen de sterkte van de hash. 12 is de industrie standaard voor veiligheid.
+const saltRounds = 12;
 
 // Email validation regex
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
