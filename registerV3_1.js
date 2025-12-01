@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitButton.textContent = 'Bezig met aanmaken...';
         // --- EINDE LAADSTATUS ---
 
-        // 2. Data object voor de server (niet gebruikt in de simulatie, maar goed om te behouden)
+        // 2. Data object voor de server
         const data = {
             username: username,
             email: email,
@@ -73,27 +73,42 @@ document.addEventListener('DOMContentLoaded', () => {
             authorizedEmail: authorizedEmail || null
         };
 
-        // 3. SIMULATIE: Vervangt de fetch() call die faalde op de demo-server
+        // 3. Stuur gegevens naar de Node.js server via fetch (als JSON)
         try {
-            // Simuleer een serververtraging van 1 seconde voor realistische UX
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // VERVANG 'UW_SERVER_URL_HIER' met het daadwerkelijke registratie-endpoint van uw server
+            const serverUrl = 'https://trustbox.diemitchell.com/register';
 
-            // Aangezien de externe server de registratie blokkeerde, 
-            // simuleren we een succes om de client-side flow (redirect) te testen.
-            const success = true;
+            const response = await fetch(serverUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
 
-            if (success) {
-                // Gebruik een simulatie-alert om duidelijk te maken dat dit niet de echte registratie is
-                alert(`[SIMULATIE] Account succesvol aangemaakt voor ${data.username}! U wordt doorgestuurd naar de loginpagina.`);
+            const resultText = await response.text();
 
+            if (response.ok) { // Controleert op HTTP status 200-299
+                alert(`Account succesvol aangemaakt voor ${data.username}!`);
                 // Redirect naar de login pagina
                 window.location.href = 'loginV3.html';
+
+            } else {
+                // Foutafhandeling
+                let errorMessage = resultText;
+                try {
+                    // Probeer de fout als JSON te lezen
+                    const errorJson = JSON.parse(resultText);
+                    errorMessage = errorJson.message || resultText;
+                } catch (e) {
+                    // Geen geldige JSON, gebruik de ruwe tekst
+                }
+                alert(`Fout bij registratie: ${errorMessage}`);
             }
 
         } catch (error) {
-            // Dit blok vangt interne JavaScript-fouten op
-            console.error('Interne fout tijdens registratieverwerking:', error);
-            alert('Er is een interne fout opgetreden.');
+            console.error('Netwerkfout bij registratie:', error);
+            alert('Er is een netwerkfout opgetreden. Kan geen verbinding maken met de server. Controleer of de server draait en de CORS-instellingen correct zijn.');
         } finally {
             // --- EINDE LAADSTATUS (WORDT ALTIJD UITGEVOERD) ---
             submitButton.disabled = false;
