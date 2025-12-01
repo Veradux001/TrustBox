@@ -13,7 +13,12 @@ const RAW_KEY = process.env.ENCRYPTION_KEY;
 if (!RAW_KEY) {
     throw new Error('ENCRYPTION_KEY is not set in environment variables');
 }
-const ENCRYPTION_KEY = Buffer.from(RAW_KEY, 'utf8'); // Moet 32 bytes (256 bit) lang zijn
+// De sleutel MOET 32 bytes (256 bit) lang zijn voor AES-256-CBC
+// Parse as hex string (64 hex characters = 32 bytes)
+const ENCRYPTION_KEY = Buffer.from(RAW_KEY, 'hex');
+if (ENCRYPTION_KEY.length !== 32) {
+    throw new Error(`ENCRYPTION_KEY must be exactly 32 bytes (64 hex characters), got ${ENCRYPTION_KEY.length} bytes. Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`);
+}
 const IV_LENGTH = 16; // Voor AES-256-CBC
 
 // --- Encryptie/Decryptie Functies ---
@@ -48,8 +53,8 @@ function decrypt(text) {
         const iv = Buffer.from(parts.shift(), 'hex');
         const encryptedText = Buffer.from(parts.join(':'), 'hex');
 
-        // De sleutel wordt als 'utf8' string behandeld
-        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'utf8'), iv);
+        // 🔑 FIX: Gebruik ENCRYPTION_KEY direct, want het is al een Buffer
+        const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
 
         let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
         decrypted += decipher.final('utf8');
@@ -77,7 +82,12 @@ const config = {
 // --- 2. Middleware Instellen ---
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: '*' }));
+// SECURITY: Restrict CORS to specific origins only
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000'];
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
 
 // Statische bestanden dienen
 app.use(express.static(path.join(__dirname, '')));
@@ -127,7 +137,7 @@ app.get('/api/getData', async (req, res) => {
         res.status(200).json(decryptedData);
     } catch (err) {
         console.error("SQL Fout bij ophalen data: ", err);
-        res.status(500).json({ message: 'Fout bij het ophalen van data van de server.', error: err.message });
+        res.status(500).json({ message: 'Fout bij het ophalen van data van de server.' });
     }
 });
 
@@ -160,7 +170,7 @@ app.post('/api/saveData', async (req, res) => {
         res.status(201).json({ message: `Data voor Groep ${GroupId} succesvol opgeslagen (INSERT) en Wachtwoord versleuteld.` });
     } catch (err) {
         console.error("SQL Fout bij opslag: ", err);
-        res.status(500).json({ message: 'Fout bij het opslaan van data op de server.', error: err.message });
+        res.status(500).json({ message: 'Fout bij het opslaan van data op de server.' });
     }
 });
 
@@ -216,7 +226,7 @@ app.put('/api/data/:groupId', async (req, res) => {
         res.status(200).json({ message: `Data voor Groep ${groupId} succesvol bijgewerkt (UPDATE) en Wachtwoord ${encryptedPassword ? 'versleuteld' : 'ongewijzigd'}.` });
     } catch (err) {
         console.error("SQL Fout bij update: ", err);
-        res.status(500).json({ message: 'Fout bij het bijwerken van data op de server.', error: err.message });
+        res.status(500).json({ message: 'Fout bij het bijwerken van data op de server.' });
     }
 });
 
@@ -242,7 +252,7 @@ app.delete('/api/data/:groupId', async (req, res) => {
         res.status(200).send(`Data voor Groep ${groupId} succesvol verwijderd.`);
     } catch (err) {
         console.error("SQL Fout bij verwijdering: ", err);
-        res.status(500).send(`Fout bij het verwijderen van data op de server: ${err.message}`);
+        res.status(500).json({ message: 'Fout bij het verwijderen van data op de server.' });
     }
 });
 

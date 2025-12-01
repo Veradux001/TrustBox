@@ -13,9 +13,39 @@ const RAW_KEY = process.env.ENCRYPTION_KEY;
 if (!RAW_KEY) {
     throw new Error('ENCRYPTION_KEY is not set in environment variables');
 }
-// De sleutel MOET 32 bytes (256 bit) lang zijn. We stellen deze EENMALIG in als Buffer.
-const ENCRYPTION_KEY = Buffer.from(RAW_KEY, 'utf8');
+// De sleutel MOET 32 bytes (256 bit) lang zijn voor AES-256-CBC
+// Parse as hex string (64 hex characters = 32 bytes)
+const ENCRYPTION_KEY = Buffer.from(RAW_KEY, 'hex');
+if (ENCRYPTION_KEY.length !== 32) {
+    throw new Error(`ENCRYPTION_KEY must be exactly 32 bytes (64 hex characters), got ${ENCRYPTION_KEY.length} bytes. Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`);
+}
 const IV_LENGTH = 16; // Voor AES-256-CBC
+
+// --- Input Validation Functions ---
+
+/**
+ * Validates integer input
+ */
+function validateInteger(value, fieldName) {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed)) {
+        throw new Error(`${fieldName} must be a valid integer`);
+    }
+    return parsed;
+}
+
+/**
+ * Validates string length
+ */
+function validateStringLength(value, fieldName, maxLength) {
+    if (typeof value !== 'string') {
+        throw new Error(`${fieldName} must be a string`);
+    }
+    if (value.length > maxLength) {
+        throw new Error(`${fieldName} exceeds maximum length of ${maxLength}`);
+    }
+    return value.trim();
+}
 
 // --- Encryptie/Decryptie Functies ---
 
@@ -48,8 +78,8 @@ function decrypt(text) {
         // Controleer of de string minstens 2 delen (IV en data) heeft
         if (parts.length < 2) {
             // Dit gebeurt als je probeert data te decrypten die niet versleuteld is (of corrupt is)
-            console.warn("Decryptie waarschuwing: Ongeldig versleuteld formaat ontvangen:", text);
-            return text; // Stuur de onbewerkte tekst terug, of een fout
+            console.warn("Decryptie waarschuwing: Ongeldig versleuteld formaat ontvangen");
+            return ''; // Return empty string instead of unencrypted text
         }
 
         // De eerste helft is de IV, de rest is de versleutelde data
@@ -65,7 +95,7 @@ function decrypt(text) {
         return decrypted;
     } catch (e) {
         console.error("Decryptie fout (waarschijnlijk verkeerde sleutel of corrupt data):", e.message);
-        return 'DECRYPTIE_FOUT';
+        return '';
     }
 }
 
@@ -85,7 +115,12 @@ const config = {
 // --- 2. Middleware Instellen ---
 app.use(express.json()); // Nodig voor JSON data van fetch()
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: '*' })); // Staat verbinding van overal toe
+// SECURITY: Restrict CORS to specific origins only
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000'];
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
 
 // Statische bestanden dienen
 app.use(express.static(path.join(__dirname, '')));
@@ -134,7 +169,7 @@ app.get('/api/getData', async (req, res) => {
         res.status(200).json(decryptedData);
     } catch (err) {
         console.error("SQL Fout bij ophalen data: ", err.message);
-        res.status(500).json({ message: 'Fout bij het ophalen van data van de server.', error: err.message });
+        res.status(500).json({ message: 'Fout bij het ophalen van data van de server.' });
     }
 });
 
@@ -151,6 +186,11 @@ app.post('/api/saveData', async (req, res) => {
     }
 
     try {
+        // Validate input
+        const validatedGroupId = validateInteger(GroupId, 'GroupId');
+        const validatedUsername = validateStringLength(Username, 'Username', 255);
+        const validatedDomain = validateStringLength(Domain, 'Domain', 255);
+
         // 🔒 ENCRYPT het wachtwoord voordat het wordt opgeslagen
         const encryptedPassword = encrypt(Password);
 
@@ -160,16 +200,16 @@ app.post('/api/saveData', async (req, res) => {
         `;
 
         const request = pool.request();
-        request.input('GroupId', sql.Int, GroupId);
-        request.input('Username', sql.NVarChar, Username);
+        request.input('GroupId', sql.Int, validatedGroupId);
+        request.input('Username', sql.NVarChar, validatedUsername);
         request.input('EncryptedPassword', sql.NVarChar, encryptedPassword); // Gebruik versleuteld wachtwoord
-        request.input('Domain', sql.NVarChar, Domain);
+        request.input('Domain', sql.NVarChar, validatedDomain);
         await request.query(insertQuery);
 
-        res.status(201).json({ message: `Data voor Groep ${GroupId} succesvol opgeslagen (INSERT) en Wachtwoord versleuteld.` });
+        res.status(201).json({ message: `Data voor Groep ${validatedGroupId} succesvol opgeslagen (INSERT) en Wachtwoord versleuteld.` });
     } catch (err) {
         console.error("SQL Fout bij opslag: ", err.message);
-        res.status(500).json({ message: 'Fout bij het opslaan van data op de server.', error: err.message });
+        res.status(500).json({ message: 'Fout bij het opslaan van data op de server.' });
     }
 });
 
@@ -188,6 +228,10 @@ app.put('/api/data/:groupId', async (req, res) => {
     let encryptedPassword = null;
 
     try {
+        // Validate input
+        const validatedGroupId = validateInteger(groupId, 'groupId');
+        const validatedUsername = validateStringLength(Username, 'Username', 255);
+        const validatedDomain = validateStringLength(Domain, 'Domain', 255);
         if (Password && Password.trim() !== "") {
             // Als er een NIEUW wachtwoord is ingevoerd, ENCRYPT het
             encryptedPassword = encrypt(Password);
@@ -209,9 +253,9 @@ app.put('/api/data/:groupId', async (req, res) => {
         }
 
         const request = pool.request();
-        request.input('GroupId', sql.Int, groupId);
-        request.input('Username', sql.NVarChar, Username);
-        request.input('Domain', sql.NVarChar, Domain);
+        request.input('GroupId', sql.Int, validatedGroupId);
+        request.input('Username', sql.NVarChar, validatedUsername);
+        request.input('Domain', sql.NVarChar, validatedDomain);
 
         if (encryptedPassword) {
             request.input('EncryptedPassword', sql.NVarChar, encryptedPassword);
@@ -223,10 +267,10 @@ app.put('/api/data/:groupId', async (req, res) => {
             return res.status(404).json({ message: 'Geen record gevonden om bij te werken.' });
         }
 
-        res.status(200).json({ message: `Data voor Groep ${groupId} succesvol bijgewerkt (UPDATE).` });
+        res.status(200).json({ message: `Data voor Groep ${validatedGroupId} succesvol bijgewerkt (UPDATE).` });
     } catch (err) {
         console.error("SQL Fout bij update: ", err.message);
-        res.status(500).json({ message: 'Fout bij het bijwerken van data op de server.', error: err.message });
+        res.status(500).json({ message: 'Fout bij het bijwerken van data op de server.' });
     }
 });
 
@@ -238,23 +282,26 @@ app.delete('/api/data/:groupId', async (req, res) => {
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
 
     const deleteQuery = `
-        DELETE FROM FormSubmission 
+        DELETE FROM FormSubmission
         WHERE GroupId = @GroupId;
     `;
 
     try {
+        // Validate input
+        const validatedGroupId = validateInteger(groupId, 'groupId');
+
         const request = pool.request();
-        request.input('GroupId', sql.Int, groupId);
+        request.input('GroupId', sql.Int, validatedGroupId);
         const result = await request.query(deleteQuery);
 
         if (result.rowsAffected[0] === 0) {
-            return res.status(404).send('Geen record gevonden met die GroupId om te verwijderen.');
+            return res.status(404).json({ message: 'Geen record gevonden met die GroupId om te verwijderen.' });
         }
 
-        res.status(200).send(`Data voor Groep ${groupId} succesvol verwijderd.`);
+        res.status(200).json({ message: `Data voor Groep ${validatedGroupId} succesvol verwijderd.` });
     } catch (err) {
         console.error("SQL Fout bij verwijdering: ", err.message);
-        res.status(500).send(`Fout bij het verwijderen van data op de server: ${err.message}`);
+        res.status(500).json({ message: 'Fout bij het verwijderen van data op de server.' });
     }
 });
 

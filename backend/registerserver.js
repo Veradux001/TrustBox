@@ -31,6 +31,22 @@ const config = {
 // De SALT ROUNDS bepalen de sterkte van de hash. 10 is de standaard.
 const saltRounds = 10;
 
+// Email validation regex
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Globale databaseverbinding pool
+let pool;
+
+// Functie om de databaseverbinding te initialiseren
+async function initializeDatabase() {
+    try {
+        pool = await sql.connect(config);
+        console.log("Database verbinding succesvol opgestart voor registerserver.");
+    } catch (err) {
+        console.error("FATALE FOUT: Databaseverbinding is mislukt:", err.message);
+        process.exit(1);
+    }
+}
 
 // 🌐 POST-route voor de registratie van een nieuwe gebruiker
 app.post('/register', async (req, res) => {
@@ -44,14 +60,24 @@ app.post('/register', async (req, res) => {
         return res.status(400).send('Fout: Gebruikersnaam, E-mail en Wachtwoord zijn verplicht.');
     }
 
-    let pool;
+    // Validate email format
+    if (!emailRegex.test(email)) {
+        return res.status(400).send('Fout: Ongeldig e-mailadres formaat.');
+    }
+
+    // Validate password strength (minimum 8 characters)
+    if (password.length < 8) {
+        return res.status(400).send('Fout: Wachtwoord moet minimaal 8 karakters lang zijn.');
+    }
+
+    if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
+
     try {
         // 1. Wachtwoord HASHEN (ASYNCHROON)
         const hash = await bcrypt.hash(password, saltRounds);
-        console.log(`Wachtwoord gehasht voor ${username}. Hash: ${hash.substring(0, 15)}...`);
+        console.log(`Wachtwoord gehasht voor ${username}.`);
 
-        // 2. Database Verbinding en INSERT
-        pool = await sql.connect(config);
+        // 2. Database INSERT using existing pool
 
 
         const result = await pool.request()
@@ -81,10 +107,6 @@ app.post('/register', async (req, res) => {
             console.error("Databasefout bij registratie:", err.message);
             res.status(500).send('Interne serverfout tijdens registratie.');
         }
-    } finally {
-        if (pool) {
-            await pool.close();
-        }
     }
 });
 
@@ -98,12 +120,10 @@ app.post('/login', async (req, res) => {
         return res.status(400).send('Fout: Gebruikersnaam en Wachtwoord zijn verplicht.');
     }
 
-    let pool;
-    try {
-        // 1. Database Verbinding
-        pool = await sql.connect(config);
+    if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
 
-        // 2. Zoek de gebruiker op en haal de gehashte wachtwoord op (PasswordHash)
+    try {
+        // 1. Zoek de gebruiker op en haal de gehashte wachtwoord op (PasswordHash)
         const result = await pool.request()
             .input('usernameParam', sql.VarChar(50), username)
             .query('SELECT PasswordHash FROM tbl_Users WHERE Username = @usernameParam');
@@ -131,10 +151,6 @@ app.post('/login', async (req, res) => {
     } catch (err) {
         console.error("Databasefout bij inloggen:", err.message);
         res.status(500).send('Interne serverfout tijdens het inloggen.');
-    } finally {
-        if (pool) {
-            await pool.close();
-        }
     }
 });
 
@@ -145,6 +161,9 @@ app.get('/', (req, res) => {
 });
 
 
-app.listen(port, () => {
-    console.log(`Server draait op http://localhost:${port}`);
+// Start de server nadat de DB is geïnitialiseerd
+initializeDatabase().then(() => {
+    app.listen(port, () => {
+        console.log(`Server draait op http://localhost:${port}`);
+    });
 });

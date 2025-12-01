@@ -1,6 +1,16 @@
 {
+  "name": "trustbox-backend",
+  "version": "1.0.0",
+  "description": "Backend API for TrustBox password manager with secure credential management",
+  "main": "serverV2.js",
+  "scripts": {
+    "start": "node serverV2.js",
+    "dev": "nodemon serverV2.js",
+    "register": "node registerserver.js"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "mssql": "^12.1.1"
