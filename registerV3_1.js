@@ -58,15 +58,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Input sanitization helper
+    // Input sanitization helper - protects against XSS
     function sanitizeInput(input) {
-        return input.trim().replace(/[<>]/g, '');
+        if (!input) return '';
+
+        // Create a temporary element to leverage browser's HTML encoding
+        const temp = document.createElement('div');
+        temp.textContent = input.trim();
+        return temp.innerHTML;
     }
 
-    // Email validation helper
+    // Email validation helper - more robust regex
     function isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
+        // RFC 5322 compliant email validation (simplified but robust)
+        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+        return emailRegex.test(email) && email.length <= 254; // RFC 5321 max length
     }
 
     // Password strength validation
@@ -130,20 +136,34 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         hideMessage();
 
-        // Check for secure connection
+        // Check for secure connection (ENFORCE, don't just warn)
         if (!isSecureConnection()) {
-            showMessage('⚠️ Warning: You are not using a secure connection (HTTPS). Your password may be transmitted insecurely.', 'warning');
-            // Continue anyway, but warn user
+            showMessage('🔒 Error: This form must be submitted over HTTPS for security. Please access this site via https://', 'error');
+            return; // Block submission over HTTP
+        }
+
+        // Get form elements with null checks
+        const usernameInput = form.querySelector('input[name="username"]');
+        const emailInput = form.querySelector('input[name="email"]');
+        const passwordInput = form.querySelector('input[name="password"]');
+        const confirmPasswordInput = form.querySelector('input[name="confirmPassword"]');
+        const authorizedPersonInput = form.querySelector('input[name="authorizedPerson"]');
+        const authorizedEmailInput = form.querySelector('input[name="authorizedEmail"]');
+        const agreeCheckbox = document.getElementById('agree');
+
+        // Validate all required elements exist
+        if (!usernameInput || !emailInput || !passwordInput || !confirmPasswordInput || !agreeCheckbox) {
+            showMessage('Error: Form elements are missing. Please refresh the page and try again.', 'error');
+            return;
         }
 
         // Get and sanitize form data
-        const username = sanitizeInput(form.querySelector('input[name="username"]').value);
-        const email = sanitizeInput(form.querySelector('input[name="email"]').value);
-        const password = form.querySelector('input[name="password"]').value;
-        const confirmPassword = form.querySelector('input[name="confirmPassword"]').value;
-        const authorizedPerson = sanitizeInput(form.querySelector('input[name="authorizedPerson"]').value);
-        const authorizedEmail = sanitizeInput(form.querySelector('input[name="authorizedEmail"]').value);
-        const agreeCheckbox = document.getElementById('agree');
+        const username = sanitizeInput(usernameInput.value);
+        const email = sanitizeInput(emailInput.value);
+        const password = passwordInput.value; // Don't sanitize password - allow all characters
+        const confirmPassword = confirmPasswordInput.value;
+        const authorizedPerson = authorizedPersonInput ? sanitizeInput(authorizedPersonInput.value) : '';
+        const authorizedEmail = authorizedEmailInput ? sanitizeInput(authorizedEmailInput.value) : '';
 
         // Validate username
         if (username.length < 3) {
@@ -167,10 +187,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Validate password strength
+        // Validate password strength - require at least medium strength
         const passwordCheck = checkPasswordStrength(password);
-        if (passwordCheck.level === 'weak') {
-            showMessage('Password is too weak. ' + passwordCheck.message, 'error');
+        if (passwordCheck.level === 'weak' || passwordCheck.level === 'medium') {
+            showMessage('Password must be strong. Please use at least 8 characters with uppercase, lowercase, numbers, and special characters.', 'error');
             return;
         }
 
@@ -212,13 +232,23 @@ document.addEventListener('DOMContentLoaded', function() {
         submitButton.textContent = 'Creating Account...';
 
         try {
+            // Get CSRF token if available (from meta tag)
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            // Add CSRF token to headers if available
+            if (csrfToken) {
+                headers['X-CSRF-Token'] = csrfToken.getAttribute('content');
+            }
+
             // Submit to API
             const response = await fetch('/api/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
+                headers: headers,
+                body: JSON.stringify(formData),
+                credentials: 'same-origin' // Include cookies for session-based CSRF
             });
 
             // Handle response
