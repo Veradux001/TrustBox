@@ -1,3 +1,15 @@
+// ⭐ VEREISTE: Functie om berichten aan de gebruiker te tonen ⭐
+function showMessage(message, type) {
+    // Voor eenvoud, gebruiken we nu 'alert()'. 
+    // In een echte app zou je dit in een HTML-element tonen.
+    if (type === 'error') {
+        alert("Fout: " + message);
+    } else if (type === 'success') {
+        alert("Succes: " + message);
+    }
+    console.log(`[${type.toUpperCase()}] ${message}`);
+}
+
 function myFunction() {
     var x = document.getElementById("myInput");
     if (x.type == "password") {
@@ -19,6 +31,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Voeg hier eventueel je showMessage functie toe als die nog niet bestaat
     // function showMessage(message, type) { /* ... logica ... */ }
+
+
 
     if (form) {
         form.addEventListener('submit', async function (e) {
