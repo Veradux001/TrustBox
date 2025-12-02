@@ -9,8 +9,11 @@ let fieldCount = 0;
  * @param {string} message De te tonen tekst.
  * @param {('success'|'error'|'warning')} type Het type melding (bepaalt de kleur).
  */
-// ⚠️ BELANGRIJKE FIX: Gebruik het volledige, externe adres van je server!
-const API_BASE_URL = 'http://172.18.241.241:3000';
+// ⚠️ API Base URL Configuration
+// Automatically determines the API URL based on the environment:
+// - In production/deployed environments: uses the same origin as the page
+// - For local development: can be overridden by setting window.API_BASE_URL in the HTML
+const API_BASE_URL = window.API_BASE_URL || window.location.origin;
 
 
 function showMessage(message, type) {
@@ -113,7 +116,12 @@ async function loadDataAndRender() {
 
     } catch (error) {
         console.error("Fout bij het laden van opgeslagen data:", error);
-        showMessage(`❌ Fout bij het laden van data: ${error.message}. Wordt vervangen door een nieuwe groep.`, 'error');
+        let errorMessage = error.message;
+        if (error.message.includes('fetch')) {
+            errorMessage = `Cannot connect to server at ${API_BASE_URL}. Please check if the server is running and the API URL is configured correctly.`;
+        }
+        showMessage(`❌ Error loading data: ${errorMessage}. Starting with a new group.`, 'error');
+        console.error('API_BASE_URL:', API_BASE_URL);
         if (formContainer.innerHTML === '') {
             addNewGroup();
         }
@@ -247,9 +255,14 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
             }
         })
         .catch(error => {
-            // Vereenvoudigde, robuustere foutmelding
-            showMessage(`❌ Error saving ${error.message}`, 'error');
+            // Improved error handling with network-specific messages
+            let errorMessage = error.message;
+            if (error.message.includes('fetch')) {
+                errorMessage = `Cannot connect to server at ${API_BASE_URL}. Please check if the server is running and the API URL is configured correctly.`;
+            }
+            showMessage(`❌ Error saving: ${errorMessage}`, 'error');
             console.error('Save error:', error);
+            console.error('API_BASE_URL:', API_BASE_URL);
         });
 }
 
@@ -303,9 +316,14 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
             }
         })
         .catch(error => {
-            // Vereenvoudigde, robuustere foutmelding
-            showMessage(`Error updating. Details: ${error.message}`, 'error');
+            // Improved error handling with network-specific messages
+            let errorMessage = error.message;
+            if (error.message.includes('fetch')) {
+                errorMessage = `Cannot connect to server at ${API_BASE_URL}. Please check if the server is running and the API URL is configured correctly.`;
+            }
+            showMessage(`❌ Error updating: ${errorMessage}`, 'error');
             console.error('Update error:', error);
+            console.error('API_BASE_URL:', API_BASE_URL);
         });
 }
 
