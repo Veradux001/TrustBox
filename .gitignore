@@ -24,3 +24,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Backup files
+*.backup
