@@ -81,7 +81,9 @@ async function loadDataAndRender() {
     fieldCount = 0;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/getData`);
+        const response = await fetch(`${API_BASE_URL}/getData`, {
+            credentials: 'include'
+        });
         if (!response.ok) {
             throw new Error('Kon data niet ophalen van de server.');
         }
@@ -230,6 +232,7 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(userData),
+        credentials: 'include'
     })
         .then(response => {
             if (response.ok) {
@@ -280,11 +283,12 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     }
 
     fetch(`${API_BASE_URL}/data/${id}`, {
-        method: 'PUT', // PUT voor UPDATE
+        method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(userData)
+        body: JSON.stringify(userData),
+        credentials: 'include'
     })
         .then(response => {
             if (response.ok) {
@@ -321,7 +325,8 @@ function deleteDataFromServer(groupId) {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
     })
         .then(response => {
             if (response.status === 404) {
@@ -364,3 +369,22 @@ function removeGroupContent(id) {
 
 // De initiële laadfunctie wordt uitgevoerd bij het laden van het script.
 loadDataAndRender();
+
+// --- 7. FUNCTIONALITEIT: LOGOUT ---
+async function logout() {
+    try {
+        await fetch(`${API_BASE_URL}/logout`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (err) {
+        console.error('Logout error:', err);
+    }
+    
+    // Clear localStorage
+    localStorage.removeItem('trustbox_user');
+    localStorage.removeItem('trustbox_logged_in');
+    
+    // Redirect to login
+    window.location.href = 'loginV3.html';
+}
