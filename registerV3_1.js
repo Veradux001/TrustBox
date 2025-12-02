@@ -1,4 +1,4 @@
-// Toggle password visibility for individual fields
+// Schakel wachtwoord zichtbaarheid voor individuele velden
 document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('passwordInput');
     const confirmPasswordInput = document.getElementById('confirmPasswordInput');
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('registerForm');
     const submitButton = form.querySelector('button[type="submit"]');
 
-    // Toggle password field visibility
+    // Schakel wachtwoordveld zichtbaarheid
     if (togglePassword) {
         togglePassword.addEventListener('click', function() {
             const type = passwordInput.type === 'password' ? 'text' : 'password';
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Toggle confirm password field visibility
+    // Schakel bevestig wachtwoordveld zichtbaarheid
     if (toggleConfirmPassword) {
         toggleConfirmPassword.addEventListener('click', function() {
             const type = confirmPasswordInput.type === 'password' ? 'text' : 'password';
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Password strength checker
+    // Wachtwoordsterkte checker
     if (passwordInput && passwordStrength) {
         passwordInput.addEventListener('input', function() {
             const password = this.value;
@@ -43,39 +43,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
             switch(strength.level) {
                 case 'weak':
-                    passwordStrength.textContent = '⚠️ Weak password: ' + strength.message;
+                    passwordStrength.textContent = '⚠️ Zwak wachtwoord: ' + strength.message;
                     passwordStrength.style.color = '#e74c3c';
                     break;
                 case 'medium':
-                    passwordStrength.textContent = '⚡ Medium password: ' + strength.message;
+                    passwordStrength.textContent = '⚡ Gemiddeld wachtwoord: ' + strength.message;
                     passwordStrength.style.color = '#f39c12';
                     break;
                 case 'strong':
-                    passwordStrength.textContent = '✓ Strong password';
+                    passwordStrength.textContent = '✓ Sterk wachtwoord';
                     passwordStrength.style.color = '#27ae60';
                     break;
             }
         });
     }
 
-    // Input sanitization helper - protects against XSS
+    // Invoer sanitisatie helper - beschermt tegen XSS
     function sanitizeInput(input) {
         if (!input) return '';
 
-        // Create a temporary element to leverage browser's HTML encoding
+        // Maak een tijdelijk element om gebruik te maken van browser's HTML encoding
         const temp = document.createElement('div');
         temp.textContent = input.trim();
         return temp.innerHTML;
     }
 
-    // Email validation helper - more robust regex
+    // E-mail validatie helper - robuustere regex
     function isValidEmail(email) {
-        // RFC 5322 compliant email validation (simplified but robust)
+        // RFC 5322 compatibele e-mailvalidatie (vereenvoudigd maar robuust)
         const emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-        return emailRegex.test(email) && email.length <= 254; // RFC 5321 max length
+        return emailRegex.test(email) && email.length <= 254; // RFC 5321 maximale lengte
     }
 
-    // Password strength validation
+    // Wachtwoordsterkte validatie
     function checkPasswordStrength(password) {
         const minLength = 8;
         const hasUpperCase = /[A-Z]/.test(password);
@@ -84,21 +84,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
         if (password.length < minLength) {
-            return { level: 'weak', message: 'At least 8 characters required' };
+            return { level: 'weak', message: 'Minimaal 8 karakters vereist' };
         }
 
         const strength = [hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar].filter(Boolean).length;
 
         if (strength < 2) {
-            return { level: 'weak', message: 'Add uppercase, numbers, or special characters' };
+            return { level: 'weak', message: 'Voeg hoofdletters, cijfers of speciale tekens toe' };
         } else if (strength < 4) {
-            return { level: 'medium', message: 'Add more variety for better security' };
+            return { level: 'medium', message: 'Voeg meer variatie toe voor betere beveiliging' };
         } else {
             return { level: 'strong', message: '' };
         }
     }
 
-    // Show message to user
+    // Toon melding aan gebruiker
     function showMessage(message, type) {
         messageContainer.style.display = 'block';
         messageContainer.textContent = message;
@@ -117,32 +117,32 @@ document.addEventListener('DOMContentLoaded', function() {
             messageContainer.style.border = '1px solid #fdcb6e';
         }
 
-        // Scroll to message
+        // Scroll naar melding
         messageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // Hide message
+    // Verberg melding
     function hideMessage() {
         messageContainer.style.display = 'none';
     }
 
-    // Check if HTTPS is being used
+    // Controleer of HTTPS wordt gebruikt
     function isSecureConnection() {
         return window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     }
 
-    // Handle form submission
+    // Behandel formulier inzending
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         hideMessage();
 
-        // Check for secure connection (ENFORCE, don't just warn)
+        // Controleer op veilige verbinding (FORCEER, niet alleen waarschuwen)
         if (!isSecureConnection()) {
-            showMessage('🔒 Error: This form must be submitted over HTTPS for security. Please access this site via https://', 'error');
-            return; // Block submission over HTTP
+            showMessage('🔒 Fout: Dit formulier moet via HTTPS worden verzonden voor beveiliging. Gebruik https://', 'error');
+            return; // Blokkeer inzending via HTTP
         }
 
-        // Get form elements with null checks
+        // Haal formulierelementen op met null checks
         const usernameInput = form.querySelector('input[name="username"]');
         const emailInput = form.querySelector('input[name="email"]');
         const passwordInput = form.querySelector('input[name="password"]');
@@ -151,73 +151,73 @@ document.addEventListener('DOMContentLoaded', function() {
         const authorizedEmailInput = form.querySelector('input[name="authorizedEmail"]');
         const agreeCheckbox = document.getElementById('agree');
 
-        // Validate all required elements exist
+        // Valideer dat alle vereiste elementen bestaan
         if (!usernameInput || !emailInput || !passwordInput || !confirmPasswordInput || !agreeCheckbox) {
-            showMessage('Error: Form elements are missing. Please refresh the page and try again.', 'error');
+            showMessage('Fout: Formulierelementen ontbreken. Ververs de pagina en probeer opnieuw.', 'error');
             return;
         }
 
-        // Get and sanitize form data
+        // Haal en sanitiseer formulierdata op
         const username = sanitizeInput(usernameInput.value);
         const email = sanitizeInput(emailInput.value);
-        const password = passwordInput.value; // Don't sanitize password - allow all characters
+        const password = passwordInput.value; // Sanitiseer wachtwoord niet - sta alle karakters toe
         const confirmPassword = confirmPasswordInput.value;
         const authorizedPerson = authorizedPersonInput ? sanitizeInput(authorizedPersonInput.value) : '';
         const authorizedEmail = authorizedEmailInput ? sanitizeInput(authorizedEmailInput.value) : '';
 
-        // Validate username
+        // Valideer gebruikersnaam
         if (username.length < 3) {
-            showMessage('Username must be at least 3 characters long.', 'error');
+            showMessage('Gebruikersnaam moet minimaal 3 karakters lang zijn.', 'error');
             return;
         }
 
         if (username.length > 30) {
-            showMessage('Username must be no more than 30 characters long.', 'error');
+            showMessage('Gebruikersnaam mag maximaal 30 karakters lang zijn.', 'error');
             return;
         }
 
         if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-            showMessage('Username can only contain letters, numbers, underscores, and hyphens.', 'error');
+            showMessage('Gebruikersnaam mag alleen letters, cijfers, underscores en koppeltekens bevatten.', 'error');
             return;
         }
 
-        // Validate email
+        // Valideer e-mail
         if (!isValidEmail(email)) {
-            showMessage('Please enter a valid email address.', 'error');
+            showMessage('Voer een geldig e-mailadres in.', 'error');
             return;
         }
 
-        // Validate password strength - require at least medium strength
+        // Valideer wachtwoordsterkte - vereist minimaal sterke wachtwoorden
         const passwordCheck = checkPasswordStrength(password);
         if (passwordCheck.level === 'weak' || passwordCheck.level === 'medium') {
-            showMessage('Password must be strong. Please use at least 8 characters with uppercase, lowercase, numbers, and special characters.', 'error');
+            showMessage('Wachtwoord moet sterk zijn. Gebruik minimaal 8 karakters met hoofdletters, kleine letters, cijfers en speciale tekens.', 'error');
             return;
         }
 
-        // Validate passwords match
+        // Valideer dat wachtwoorden overeenkomen
         if (password !== confirmPassword) {
-            showMessage('Passwords do not match. Please try again.', 'error');
+            showMessage('Wachtwoorden komen niet overeen. Probeer opnieuw.', 'error');
             return;
         }
 
-        // Validate authorized email if authorized person is provided
+        // Valideer gemachtigde e-mail als gemachtigde persoon is opgegeven
         if (authorizedPerson && !authorizedEmail) {
-            showMessage('Please provide an email for the authorized person.', 'error');
+            showMessage('Geef een e-mailadres op voor de gemachtigde persoon.', 'error');
             return;
         }
 
         if (authorizedEmail && !isValidEmail(authorizedEmail)) {
-            showMessage('Please enter a valid authorized email address.', 'error');
+            showMessage('Voer een geldig e-mailadres in voor de gemachtigde.', 'error');
             return;
         }
 
-        // Validate terms agreement
+        // Valideer akkoord met voorwaarden
         if (!agreeCheckbox.checked) {
-            showMessage('Please agree to the Terms of Service and Privacy Policy.', 'error');
+            showMessage('Ga akkoord met de Algemene Voorwaarden en het Privacybeleid.', 'error');
             return;
         }
 
-        // Prepare data for API
+        // Bereid data voor API voor
         const formData = {
             username: username,
             email: email,
@@ -226,69 +226,69 @@ document.addEventListener('DOMContentLoaded', function() {
             authorizedEmail: authorizedEmail || null
         };
 
-        // Disable submit button and show loading state
+        // Schakel verzendknop uit en toon laadstatus
         submitButton.disabled = true;
         const originalButtonText = submitButton.textContent;
-        submitButton.textContent = 'Creating Account...';
+        submitButton.textContent = 'Account aanmaken...';
 
         try {
-            // Get CSRF token if available (from meta tag)
+            // Haal CSRF token op indien beschikbaar (uit meta tag)
             const csrfToken = document.querySelector('meta[name="csrf-token"]');
             const headers = {
                 'Content-Type': 'application/json'
             };
 
-            // Add CSRF token to headers if available
+            // Voeg CSRF token toe aan headers indien beschikbaar
             if (csrfToken) {
                 headers['X-CSRF-Token'] = csrfToken.getAttribute('content');
             }
 
-            // Submit to API
+            // Verstuur naar API
             const response = await fetch('/api/register', {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify(formData),
-                credentials: 'same-origin' // Include cookies for session-based CSRF
+                credentials: 'same-origin' // Inclusief cookies voor sessie-gebaseerde CSRF
             });
 
-            // Handle response
+            // Behandel response
             if (response.ok) {
-                // Check if response is JSON before parsing
+                // Controleer of response JSON is voordat parseren
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
                     const data = await response.json();
-                    showMessage('✓ Account created successfully! Redirecting to login...', 'success');
+                    showMessage('✓ Account succesvol aangemaakt! Doorverwijzen naar login...', 'success');
                 } else {
-                    // Handle plain text success response (for backward compatibility)
+                    // Behandel platte tekst succesresponse (voor achterwaartse compatibiliteit)
                     const text = await response.text();
-                    showMessage('✓ Account created successfully! Redirecting to login...', 'success');
+                    showMessage('✓ Account succesvol aangemaakt! Doorverwijzen naar login...', 'success');
                 }
 
-                // Redirect after a short delay to let user see the message
+                // Doorverwijzen na korte vertraging om gebruiker de melding te laten zien
                 setTimeout(() => {
                     window.location.href = 'loginV3.html';
                 }, 1500);
             } else {
-                // Check if response is JSON
+                // Controleer of response JSON is
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
                     const data = await response.json();
-                    showMessage('Registration failed: ' + (data.message || 'Unknown error'), 'error');
+                    showMessage('Registratie mislukt: ' + (data.message || 'Onbekende fout'), 'error');
                 } else {
-                    // Non-JSON error response
+                    // Niet-JSON foutresponse
                     const text = await response.text();
-                    showMessage('Registration failed: ' + (text || 'Server error (status ' + response.status + ')'), 'error');
+                    showMessage('Registratie mislukt: ' + (text || 'Serverfout (status ' + response.status + ')'), 'error');
                 }
 
-                // Re-enable submit button
+                // Schakel verzendknop weer in
                 submitButton.disabled = false;
                 submitButton.textContent = originalButtonText;
             }
         } catch (error) {
-            console.error('Error during registration:', error);
-            showMessage('An error occurred during registration. Please check your connection and try again.', 'error');
+            console.error('Fout tijdens registratie:', error);
+            showMessage('Er is een fout opgetreden tijdens registratie. Controleer je verbinding en probeer opnieuw.', 'error');
 
-            // Re-enable submit button
+            // Schakel verzendknop weer in
             submitButton.disabled = false;
             submitButton.textContent = originalButtonText;
         }
