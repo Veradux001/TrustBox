@@ -10,58 +10,58 @@ const app = express();
 const router = express.Router();
 const port = process.env.PORT || 3000;
 
-// --- Validation Constants ---
+// --- Validatie Constanten ---
 const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 50;
 const EMAIL_MAX_LENGTH = 100;
 const PASSWORD_MIN_LENGTH = 8;
-const PASSWORD_MAX_LENGTH = 72; // bcrypt maximum input length
-const BCRYPT_SALT_ROUNDS = 12; // Industry standard for security
+const PASSWORD_MAX_LENGTH = 72; // Maximale invoerlengte voor bcrypt
+const BCRYPT_SALT_ROUNDS = 12; // Industriestandaard voor beveiliging
 
-// Load encryption key from environment variables
+// Laad versleutelingssleutel uit omgevingsvariabelen
 const RAW_KEY = process.env.ENCRYPTION_KEY;
 if (!RAW_KEY) {
-    throw new Error('ENCRYPTION_KEY is not set in environment variables');
+    throw new Error('ENCRYPTION_KEY is niet ingesteld in omgevingsvariabelen');
 }
 // De sleutel MOET 32 bytes (256 bit) lang zijn voor AES-256-CBC
-// Parse as hex string (64 hex characters = 32 bytes)
+// Parseer als hex string (64 hex karakters = 32 bytes)
 const ENCRYPTION_KEY = Buffer.from(RAW_KEY, 'hex');
 if (ENCRYPTION_KEY.length !== 32) {
-    throw new Error(`ENCRYPTION_KEY must be exactly 32 bytes (64 hex characters), got ${ENCRYPTION_KEY.length} bytes. Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`);
+    throw new Error(`ENCRYPTION_KEY moet exact 32 bytes (64 hex karakters) zijn, kreeg ${ENCRYPTION_KEY.length} bytes. Genereer een nieuwe met: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`);
 }
 const IV_LENGTH = 16; // Voor AES-256-CBC
 
-// --- Input Validation Functions ---
+// --- Invoer Validatie Functies ---
 
 /**
- * Validates that a value is a valid integer
- * @param {*} value - The value to validate
- * @param {string} fieldName - The name of the field being validated (for error messages)
- * @returns {number} The parsed integer value
- * @throws {Error} If the value is not a valid integer
+ * Valideert dat een waarde een geldig geheel getal is
+ * @param {*} value - De te valideren waarde
+ * @param {string} fieldName - De naam van het veld dat wordt gevalideerd (voor foutmeldingen)
+ * @returns {number} De geparseerde integer waarde
+ * @throws {Error} Als de waarde geen geldig geheel getal is
  */
 function validateInteger(value, fieldName) {
     const parsed = parseInt(value, 10);
     if (isNaN(parsed)) {
-        throw new Error(`${fieldName} must be a valid integer`);
+        throw new Error(`${fieldName} moet een geldig geheel getal zijn`);
     }
     return parsed;
 }
 
 /**
- * Validates that a string does not exceed a maximum length
- * @param {*} value - The value to validate
- * @param {string} fieldName - The name of the field being validated (for error messages)
- * @param {number} maxLength - The maximum allowed length
- * @returns {string} The trimmed string value
- * @throws {Error} If the value is not a string or exceeds the maximum length
+ * Valideert dat een string een maximale lengte niet overschrijdt
+ * @param {*} value - De te valideren waarde
+ * @param {string} fieldName - De naam van het veld dat wordt gevalideerd (voor foutmeldingen)
+ * @param {number} maxLength - De maximaal toegestane lengte
+ * @returns {string} De getrimde string waarde
+ * @throws {Error} Als de waarde geen string is of de maximale lengte overschrijdt
  */
 function validateStringLength(value, fieldName, maxLength) {
     if (typeof value !== 'string') {
-        throw new Error(`${fieldName} must be a string`);
+        throw new Error(`${fieldName} moet een string zijn`);
     }
     if (value.length > maxLength) {
-        throw new Error(`${fieldName} exceeds maximum length of ${maxLength}`);
+        throw new Error(`${fieldName} overschrijdt de maximale lengte van ${maxLength}`);
     }
     return value.trim();
 }
@@ -69,9 +69,9 @@ function validateStringLength(value, fieldName, maxLength) {
 // --- Encryptie/Decryptie Functies ---
 
 /**
- * Encrypts a text string using AES-256-CBC encryption
- * @param {string} text - The plaintext string to encrypt
- * @returns {string} The encrypted text in format "iv:encryptedData" (both as hex strings)
+ * Versleutelt een tekststring met AES-256-CBC encryptie
+ * @param {string} text - De platte tekst om te versleutelen
+ * @returns {string} De versleutelde tekst in formaat "iv:encryptedData" (beide als hex strings)
  */
 function encrypt(text) {
     // Genereer een nieuwe IV van 16 bytes bij elke versleuteling
@@ -88,9 +88,9 @@ function encrypt(text) {
 }
 
 /**
- * Decrypts a text string using AES-256-CBC decryption
- * @param {string} text - The encrypted text in format "iv:encryptedData" (both as hex strings)
- * @returns {string} The decrypted plaintext string, or empty string if decryption fails
+ * Ontsleutelt een tekststring met AES-256-CBC decryptie
+ * @param {string} text - De versleutelde tekst in formaat "iv:encryptedData" (beide als hex strings)
+ * @returns {string} De ontsleutelde platte tekst, of lege string als decryptie mislukt
  */
 function decrypt(text) {
     if (!text || text.trim() === '') return '';
@@ -102,7 +102,7 @@ function decrypt(text) {
         if (parts.length < 2) {
             // Dit gebeurt als je probeert data te decrypten die niet versleuteld is (of corrupt is)
             console.warn("Decryptie waarschuwing: Ongeldig versleuteld formaat ontvangen");
-            return ''; // Return empty string instead of unencrypted text
+            return ''; // Geef lege string terug in plaats van onversleutelde tekst
         }
 
         // De eerste helft is de IV, de rest is de versleutelde data
@@ -117,7 +117,7 @@ function decrypt(text) {
 
         return decrypted;
     } catch (e) {
-        console.error("Decryptie fout (waarschijnlijk verkeerde sleutel of corrupt data):", e.message);
+        console.error("Decryptie fout (waarschijnlijk verkeerde sleutel of corrupte data):", e.message);
         return '';
     }
 }
@@ -127,7 +127,7 @@ function decrypt(text) {
 const config = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    server: process.env.DB_SERVER, // Let op: dit is een PRIVE IP. Zorg dat je netwerk dit toelaat.
+    server: process.env.DB_SERVER, // Let op: dit is een PRIVÉ IP. Zorg dat je netwerk dit toelaat.
     database: process.env.DB_DATABASE_SUBMISSION,
     options: {
         encrypt: process.env.DB_ENCRYPT === 'true',
@@ -135,7 +135,7 @@ const config = {
     }
 };
 
-// Registration database configuration
+// Registratie database configuratie
 const registerConfig = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
@@ -150,7 +150,7 @@ const registerConfig = {
 // --- 2. Middleware Instellen ---
 app.use(express.json({ limit: '1mb' })); // Nodig voor JSON data van fetch()
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-// SECURITY: Restrict CORS to specific origins only
+// BEVEILIGING: Beperk CORS tot specifieke origins
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000'];
 app.use(cors({
     origin: allowedOrigins,
@@ -181,13 +181,13 @@ async function initializeDatabase() {
         // De server sluit niet af, maar we loggen de fout.
     }
 
-    // Initialize registration database pool
+    // Initialiseer registratie database pool
     try {
         registerPool = await new sql.ConnectionPool(registerConfig).connect();
-        console.log("Registration databaseverbinding is succesvol opgestart.");
+        console.log("Registratie databaseverbinding is succesvol opgestart.");
     } catch (err) {
-        console.error("WAARSCHUWING: Registration databaseverbinding is mislukt:", err.message);
-        // Continue without registration functionality if this fails
+        console.error("WAARSCHUWING: Registratie databaseverbinding is mislukt:", err.message);
+        // Ga door zonder registratiefunctionaliteit als dit mislukt
     }
 }
 
@@ -231,12 +231,12 @@ router.post('/saveData', async (req, res) => {
     }
 
     try {
-        // Validate input
+        // Valideer invoer
         const validatedGroupId = validateInteger(GroupId, 'GroupId');
         const validatedUsername = validateStringLength(Username, 'Username', 255);
         const validatedDomain = validateStringLength(Domain, 'Domain', 255);
 
-        // 🔒 ENCRYPT het wachtwoord voordat het wordt opgeslagen
+        // 🔒 VERSLEUTEL het wachtwoord voordat het wordt opgeslagen
         const encryptedPassword = encrypt(Password);
 
         const insertQuery = `
@@ -273,12 +273,12 @@ router.put('/data/:groupId', async (req, res) => {
     let encryptedPassword = null;
 
     try {
-        // Validate input
+        // Valideer invoer
         const validatedGroupId = validateInteger(groupId, 'groupId');
         const validatedUsername = validateStringLength(Username, 'Username', 255);
         const validatedDomain = validateStringLength(Domain, 'Domain', 255);
         if (Password && Password.trim() !== "") {
-            // Als er een NIEUW wachtwoord is ingevoerd, ENCRYPT het
+            // Als er een NIEUW wachtwoord is ingevoerd, VERSLEUTEL het
             encryptedPassword = encrypt(Password);
             updateQuery = `
                 UPDATE FormSubmission 
@@ -320,7 +320,7 @@ router.put('/data/:groupId', async (req, res) => {
 });
 
 
-// ** --- 6. HET DELETE ENDPOINT VOOR VERWIJDERING (DELETE) --- **
+// ** --- 6. DELETE ENDPOINT VOOR VERWIJDERING (DELETE) --- **
 router.delete('/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
 
@@ -332,7 +332,7 @@ router.delete('/data/:groupId', async (req, res) => {
     `;
 
     try {
-        // Validate input
+        // Valideer invoer
         const validatedGroupId = validateInteger(groupId, 'groupId');
 
         const request = pool.request();
@@ -350,72 +350,72 @@ router.delete('/data/:groupId', async (req, res) => {
     }
 });
 
-// ** --- 7. POST ENDPOINT FOR USER REGISTRATION --- **
+// ** --- 7. POST ENDPOINT VOOR GEBRUIKERSREGISTRATIE --- **
 router.post('/register', async (req, res) => {
-    // Check if registration database is available
+    // Controleer of registratie database beschikbaar is
     if (!registerPool) {
         return res.status(503).json({
-            message: 'Registration service is temporarily unavailable. Please try again later.'
+            message: 'Registratieservice is tijdelijk niet beschikbaar. Probeer het later opnieuw.'
         });
     }
 
-    // Extract and validate request body
+    // Haal en valideer request body op
     const { username, email, password, authorizedPerson, authorizedEmail } = req.body;
 
-    // Validate required fields
+    // Valideer verplichte velden
     if (!username || !email || !password) {
         return res.status(400).json({
-            message: 'Username, email, and password are required fields.'
+            message: 'Gebruikersnaam, e-mail en wachtwoord zijn verplichte velden.'
         });
     }
 
     try {
-        // --- Input Validation ---
+        // --- Invoer Validatie ---
 
-        // Validate username (alphanumeric + underscore/hyphen only)
+        // Valideer gebruikersnaam (alleen alfanumeriek + underscore/koppelteken)
         if (typeof username !== 'string' || username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
             return res.status(400).json({
-                message: `Username must be between ${USERNAME_MIN_LENGTH} and ${USERNAME_MAX_LENGTH} characters.`
+                message: `Gebruikersnaam moet tussen ${USERNAME_MIN_LENGTH} en ${USERNAME_MAX_LENGTH} karakters zijn.`
             });
         }
         if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
             return res.status(400).json({
-                message: 'Username can only contain letters, numbers, underscores, and hyphens.'
+                message: 'Gebruikersnaam mag alleen letters, cijfers, underscores en koppeltekens bevatten.'
             });
         }
 
-        // Validate email (practical validation pattern, max 100 chars)
+        // Valideer e-mail (praktische validatie patroon, max 100 karakters)
         const emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
         if (typeof email !== 'string' || !emailRegex.test(email) || email.length > EMAIL_MAX_LENGTH) {
             return res.status(400).json({
-                message: `Please provide a valid email address (max ${EMAIL_MAX_LENGTH} characters).`
+                message: `Geef een geldig e-mailadres op (max ${EMAIL_MAX_LENGTH} karakters).`
             });
         }
 
-        // Validate password (minimum 8 chars, maximum 72 chars for bcrypt)
+        // Valideer wachtwoord (minimaal 8 karakters, maximaal 72 karakters voor bcrypt)
         if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH) {
             return res.status(400).json({
-                message: `Password must be between ${PASSWORD_MIN_LENGTH} and ${PASSWORD_MAX_LENGTH} characters long.`
+                message: `Wachtwoord moet tussen ${PASSWORD_MIN_LENGTH} en ${PASSWORD_MAX_LENGTH} karakters lang zijn.`
             });
         }
 
-        // Validate optional authorizedPerson field
+        // Valideer optioneel authorizedPerson veld
         if (authorizedPerson && (typeof authorizedPerson !== 'string' || authorizedPerson.length > 100)) {
             return res.status(400).json({
-                message: 'Authorized person name must not exceed 100 characters.'
+                message: 'Naam gemachtigde persoon mag niet meer dan 100 karakters zijn.'
             });
         }
 
-        // Validate optional authorizedEmail field
+        // Valideer optioneel authorizedEmail veld
         if (authorizedEmail) {
             if (typeof authorizedEmail !== 'string' || !emailRegex.test(authorizedEmail) || authorizedEmail.length > 100) {
                 return res.status(400).json({
-                    message: 'Authorized email must be a valid email address (max 100 characters).'
+                    message: 'E-mail gemachtigde moet een geldig e-mailadres zijn (max 100 karakters).'
                 });
             }
         }
 
-        // --- Check for Duplicate Username or Email ---
+        // --- Controleer op Dubbele Gebruikersnaam of E-mail ---
         const checkDuplicateQuery = `
             SELECT Username, Email
             FROM tbl_Users
@@ -431,20 +431,20 @@ router.post('/register', async (req, res) => {
             const existing = duplicateResult.recordset[0];
             if (existing.Username === username) {
                 return res.status(409).json({
-                    message: 'Username is already taken. Please choose a different username.'
+                    message: 'Gebruikersnaam is al in gebruik. Kies een andere gebruikersnaam.'
                 });
             }
             if (existing.Email === email) {
                 return res.status(409).json({
-                    message: 'Email address is already registered. Please use a different email or try logging in.'
+                    message: 'E-mailadres is al geregistreerd. Gebruik een ander e-mailadres of probeer in te loggen.'
                 });
             }
         }
 
-        // --- Hash Password with bcrypt ---
+        // --- Hash Wachtwoord met bcrypt ---
         const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
-        // --- Insert New User into Database ---
+        // --- Voeg Nieuwe Gebruiker toe aan Database ---
         const insertQuery = `
             INSERT INTO tbl_Users (Username, Email, PasswordHash, AuthorizedPerson, AuthorizedEmail)
             VALUES (@Username, @Email, @PasswordHash, @AuthorizedPerson, @AuthorizedEmail);
@@ -453,71 +453,71 @@ router.post('/register', async (req, res) => {
         const insertRequest = registerPool.request();
         insertRequest.input('Username', sql.NVarChar(50), username);
         insertRequest.input('Email', sql.NVarChar(100), email);
-        insertRequest.input('PasswordHash', sql.Char(60), passwordHash); // bcrypt hashes are exactly 60 chars (fixed-length)
+        insertRequest.input('PasswordHash', sql.Char(60), passwordHash); // bcrypt hashes zijn exact 60 karakters (vaste lengte)
         insertRequest.input('AuthorizedPerson', sql.NVarChar(100), authorizedPerson || null);
         insertRequest.input('AuthorizedEmail', sql.NVarChar(100), authorizedEmail || null);
 
         await insertRequest.query(insertQuery);
 
-        // Success response
+        // Succes response
         res.status(201).json({
-            message: 'Account created successfully! You can now log in.',
+            message: 'Account succesvol aangemaakt! Je kunt nu inloggen.',
             username: username
         });
 
     } catch (err) {
-        console.error("Registration error:", err.message);
+        console.error("Registratie fout:", err.message);
 
-        // Handle specific SQL errors
+        // Behandel specifieke SQL fouten
         if (err.number === 2627 || err.number === 2601) {
-            // Duplicate key error (backup check)
+            // Dubbele sleutel fout (backup controle)
             return res.status(409).json({
-                message: 'Username or email already exists.'
+                message: 'Gebruikersnaam of e-mail bestaat al.'
             });
         }
 
         res.status(500).json({
-            message: 'An error occurred during registration. Please try again later.'
+            message: 'Er is een fout opgetreden tijdens registratie. Probeer het later opnieuw.'
         });
     }
 });
 
-// ** --- 8. POST ENDPOINT FOR USER LOGIN --- **
+// ** --- 8. POST ENDPOINT VOOR GEBRUIKERSLOGIN --- **
 router.post('/login', async (req, res) => {
-    // Check if registration database is available (we use same DB for login)
+    // Controleer of registratie database beschikbaar is (we gebruiken dezelfde DB voor login)
     if (!registerPool) {
         return res.status(503).json({
-            message: 'Authentication service is temporarily unavailable. Please try again later.'
+            message: 'Authenticatieservice is tijdelijk niet beschikbaar. Probeer het later opnieuw.'
         });
     }
 
-    // Extract and validate request body
+    // Haal en valideer request body op
     const { email, password } = req.body;
 
-    // Validate required fields
+    // Valideer verplichte velden
     if (!email || !password) {
         return res.status(400).json({
-            message: 'Email and password are required fields.'
+            message: 'E-mail en wachtwoord zijn verplichte velden.'
         });
     }
 
     try {
-        // --- Input Validation ---
+        // --- Invoer Validatie ---
         const emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
         if (typeof email !== 'string' || !emailRegex.test(email) || email.length > EMAIL_MAX_LENGTH) {
             return res.status(400).json({
-                message: 'Please provide a valid email address.'
+                message: 'Geef een geldig e-mailadres op.'
             });
         }
 
         if (typeof password !== 'string' || password.length < 1) {
             return res.status(400).json({
-                message: 'Please provide a password.'
+                message: 'Geef een wachtwoord op.'
             });
         }
 
-        // --- Find User by Email ---
+        // --- Zoek Gebruiker op E-mail ---
         const findUserQuery = `
             SELECT UserId, Username, Email, PasswordHash
             FROM tbl_Users
@@ -528,28 +528,28 @@ router.post('/login', async (req, res) => {
         findRequest.input('Email', sql.NVarChar(100), email);
         const result = await findRequest.query(findUserQuery);
 
-        // Check if user exists
+        // Controleer of gebruiker bestaat
         if (result.recordset.length === 0) {
             return res.status(401).json({
-                message: 'Invalid email or password.'
+                message: 'Ongeldig e-mailadres of wachtwoord.'
             });
         }
 
         const user = result.recordset[0];
 
-        // --- Verify Password with bcrypt ---
+        // --- Verifieer Wachtwoord met bcrypt ---
         const isPasswordValid = await bcrypt.compare(password, user.PasswordHash);
 
         if (!isPasswordValid) {
             return res.status(401).json({
-                message: 'Invalid email or password.'
+                message: 'Ongeldig e-mailadres of wachtwoord.'
             });
         }
 
-        // --- Successful Login ---
-        // Return user info (excluding password hash)
+        // --- Succesvolle Login ---
+        // Geef gebruikersinformatie terug (zonder wachtwoord hash)
         res.status(200).json({
-            message: 'Login successful!',
+            message: 'Login succesvol!',
             user: {
                 userId: user.UserId,
                 username: user.Username,
@@ -558,15 +558,15 @@ router.post('/login', async (req, res) => {
         });
 
     } catch (err) {
-        console.error("Login error:", err.message);
+        console.error("Login fout:", err.message);
 
         res.status(500).json({
-            message: 'An error occurred during login. Please try again later.'
+            message: 'Er is een fout opgetreden tijdens het inloggen. Probeer het later opnieuw.'
         });
     }
 });
 
-// Mount the API router at root (Nginx strips /api prefix before proxying)
+// Koppel de API router aan root (Nginx verwijdert /api prefix voordat het naar backend proxied)
 app.use('/', router);
 
 // --- 9. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
