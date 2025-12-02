@@ -192,7 +192,7 @@ async function initializeDatabase() {
 
 // ** --- 3. GET ENDPOINT VOOR DATA OPHALEN (READ) --- **
 // Haalt de data op en ontsleutelt het wachtwoord voor de client
-app.get('/api/getData', async (req, res) => {
+app.get('/getData', async (req, res) => {
     const selectQuery = `
         SELECT GroupId, Username, Password, Domain 
         FROM FormSubmission 
@@ -220,7 +220,7 @@ app.get('/api/getData', async (req, res) => {
 
 // ** --- 4. POST ENDPOINT VOOR OPSLAG (CREATE) --- **
 // Versleutelt het wachtwoord voordat het wordt opgeslagen
-app.post('/api/saveData', async (req, res) => {
+app.post('/saveData', async (req, res) => {
     const { GroupId, Username, Password, Domain } = req.body;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
@@ -258,7 +258,7 @@ app.post('/api/saveData', async (req, res) => {
 });
 
 // ** --- 5. PUT ENDPOINT VOOR UPDATE (UPDATE) --- **
-app.put('/api/data/:groupId', async (req, res) => {
+app.put('/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
     const { Username, Password, Domain } = req.body;
 
@@ -320,7 +320,7 @@ app.put('/api/data/:groupId', async (req, res) => {
 
 
 // ** --- 6. HET DELETE ENDPOINT VOOR VERWIJDERING (DELETE) --- **
-app.delete('/api/data/:groupId', async (req, res) => {
+app.delete('/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
@@ -350,7 +350,7 @@ app.delete('/api/data/:groupId', async (req, res) => {
 });
 
 // ** --- 7. POST ENDPOINT FOR USER REGISTRATION --- **
-app.post('/api/register', async (req, res) => {
+app.post('/register', async (req, res) => {
     // Check if registration database is available
     if (!registerPool) {
         return res.status(503).json({
@@ -481,7 +481,91 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// --- 8. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
+// ** --- 8. POST ENDPOINT FOR USER LOGIN --- **
+app.post('/login', async (req, res) => {
+    // Check if registration database is available (we use same DB for login)
+    if (!registerPool) {
+        return res.status(503).json({
+            message: 'Authentication service is temporarily unavailable. Please try again later.'
+        });
+    }
+
+    // Extract and validate request body
+    const { email, password } = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+        return res.status(400).json({
+            message: 'Email and password are required fields.'
+        });
+    }
+
+    try {
+        // --- Input Validation ---
+        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+        if (typeof email !== 'string' || !emailRegex.test(email) || email.length > EMAIL_MAX_LENGTH) {
+            return res.status(400).json({
+                message: 'Please provide a valid email address.'
+            });
+        }
+
+        if (typeof password !== 'string' || password.length < 1) {
+            return res.status(400).json({
+                message: 'Please provide a password.'
+            });
+        }
+
+        // --- Find User by Email ---
+        const findUserQuery = `
+            SELECT UserId, Username, Email, PasswordHash
+            FROM tbl_Users
+            WHERE Email = @Email;
+        `;
+
+        const findRequest = registerPool.request();
+        findRequest.input('Email', sql.NVarChar(100), email);
+        const result = await findRequest.query(findUserQuery);
+
+        // Check if user exists
+        if (result.recordset.length === 0) {
+            return res.status(401).json({
+                message: 'Invalid email or password.'
+            });
+        }
+
+        const user = result.recordset[0];
+
+        // --- Verify Password with bcrypt ---
+        const isPasswordValid = await bcrypt.compare(password, user.PasswordHash);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                message: 'Invalid email or password.'
+            });
+        }
+
+        // --- Successful Login ---
+        // Return user info (excluding password hash)
+        res.status(200).json({
+            message: 'Login successful!',
+            user: {
+                userId: user.UserId,
+                username: user.Username,
+                email: user.Email
+            }
+        });
+
+    } catch (err) {
+        console.error("Login error:", err.message);
+
+        res.status(500).json({
+            message: 'An error occurred during login. Please try again later.'
+        });
+    }
+});
+
+// --- 9. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
 initializeDatabase().then(() => {
     app.listen(port, () => {
         console.log(`CRUD Server draait op http://localhost:${port}.`);
