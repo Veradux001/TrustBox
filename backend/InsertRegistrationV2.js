@@ -127,7 +127,7 @@ app.post('/register', async (req, res) => {
 });
 
 // 🌐 POST-route voor het inloggen van een gebruiker
-app.post('/api/check', async (req, res) => {
+app.post('/check', async (req, res) => {
     // 1. INPUT OPHALEN (gebruik de 'name' attributen uit je loginV3.html)
     const { email, password } = req.body;
 
