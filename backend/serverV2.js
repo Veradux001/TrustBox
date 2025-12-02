@@ -566,8 +566,8 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Mount the API router under /api prefix
-app.use('/api', router);
+// Mount the API router at root (Nginx strips /api prefix before proxying)
+app.use('/', router);
 
 // --- 9. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
 initializeDatabase().then(() => {
