@@ -9,8 +9,10 @@ let fieldCount = 0;
  * @param {string} message - De te tonen tekst.
  * @param {('success'|'error'|'warning')} type - Het type melding (bepaalt de kleur).
  */
-// API Configuratie: Verwijst naar de Node.js backend
-const API_BASE_URL = 'https://trustbox.diemitchell.com/api';
+// API Configuratie: Automatisch detecteren van omgeving (localhost vs productie)
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : 'https://trustbox.diemitchell.com/api';
 
 
 function showMessage(message, type) {
