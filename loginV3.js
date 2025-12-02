@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'https://trustbox.diemitchell.com/api';
+const API_BASE_URL = 'http://localhost:3000';
 
 document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('myInput');
