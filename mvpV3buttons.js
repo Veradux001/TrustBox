@@ -14,6 +14,12 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
     ? 'http://localhost:3000'
     : `${window.location.protocol}//${window.location.hostname}/api`;
 
+// Haal userId op uit localStorage
+function getUserId() {
+    const user = localStorage.getItem('trustbox_user');
+    return user ? JSON.parse(user).userId : null;
+}
+
 
 function showMessage(message, type) {
     const container = document.getElementById('message-container') || createMessageContainer();
@@ -81,7 +87,9 @@ async function loadDataAndRender() {
     fieldCount = 0;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/getData`);
+        const response = await fetch(`${API_BASE_URL}/getData`, {
+            headers: { 'x-user-id': getUserId() }
+        });
         if (!response.ok) {
             throw new Error('Kon data niet ophalen van de server.');
         }
@@ -228,6 +236,7 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'x-user-id': getUserId()
         },
         body: JSON.stringify(userData),
     })
@@ -280,9 +289,10 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     }
 
     fetch(`${API_BASE_URL}/data/${id}`, {
-        method: 'PUT', // PUT voor UPDATE
+        method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'x-user-id': getUserId()
         },
         body: JSON.stringify(userData)
     })
@@ -320,7 +330,8 @@ function deleteDataFromServer(groupId) {
     return fetch(`${API_BASE_URL}/data/${groupId}`, {
         method: 'DELETE',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'x-user-id': getUserId()
         }
     })
         .then(response => {
