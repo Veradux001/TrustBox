@@ -9,8 +9,8 @@ let fieldCount = 0;
  * @param {string} message De te tonen tekst.
  * @param {('success'|'error'|'warning')} type Het type melding (bepaalt de kleur).
  */
-// ⚠️ BELANGRIJKE FIX: Gebruik het volledige, externe adres van je server!
-const API_BASE_URL = 'http://172.18.241.241:3000';
+// API Configuration: Points to the Node.js backend
+const API_BASE_URL = 'https://trustbox.diemitchell.com/api';
 
 
 function showMessage(message, type) {
@@ -79,7 +79,7 @@ async function loadDataAndRender() {
     fieldCount = 0;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/getData`);
+        const response = await fetch(`${API_BASE_URL}/getData`);
         if (!response.ok) {
             throw new Error('Kon data niet ophalen van de server.');
         }
@@ -222,7 +222,7 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
         return;
     }
 
-    fetch(`${API_BASE_URL}/api/saveData`, { // ⬅️ GEBRUIK DEZE ABSOLUTE URL
+    fetch(`${API_BASE_URL}/saveData`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -277,7 +277,7 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
         return;
     }
 
-    fetch(`${API_BASE_URL}/api/data/${id}`, {
+    fetch(`${API_BASE_URL}/data/${id}`, {
         method: 'PUT', // PUT voor UPDATE
         headers: {
             'Content-Type': 'application/json'
@@ -315,7 +315,7 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
  * Stuurt een DELETE verzoek naar de Node.js server.
  */
 function deleteDataFromServer(groupId) {
-    return fetch(`${API_BASE_URL}/api/data/${groupId}`, {
+    return fetch(`${API_BASE_URL}/data/${groupId}`, {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json'
