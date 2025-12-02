@@ -192,7 +192,7 @@ async function initializeDatabase() {
 
 // ** --- 3. GET ENDPOINT VOOR DATA OPHALEN (READ) --- **
 // Haalt de data op en ontsleutelt het wachtwoord voor de client
-app.get('/api/getData', async (req, res) => {
+app.get('/getData', async (req, res) => {
     const selectQuery = `
         SELECT GroupId, Username, Password, Domain 
         FROM FormSubmission 
@@ -220,7 +220,7 @@ app.get('/api/getData', async (req, res) => {
 
 // ** --- 4. POST ENDPOINT VOOR OPSLAG (CREATE) --- **
 // Versleutelt het wachtwoord voordat het wordt opgeslagen
-app.post('/api/saveData', async (req, res) => {
+app.post('/saveData', async (req, res) => {
     const { GroupId, Username, Password, Domain } = req.body;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
@@ -258,7 +258,7 @@ app.post('/api/saveData', async (req, res) => {
 });
 
 // ** --- 5. PUT ENDPOINT VOOR UPDATE (UPDATE) --- **
-app.put('/api/data/:groupId', async (req, res) => {
+app.put('/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
     const { Username, Password, Domain } = req.body;
 
@@ -320,7 +320,7 @@ app.put('/api/data/:groupId', async (req, res) => {
 
 
 // ** --- 6. HET DELETE ENDPOINT VOOR VERWIJDERING (DELETE) --- **
-app.delete('/api/data/:groupId', async (req, res) => {
+app.delete('/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
@@ -350,7 +350,7 @@ app.delete('/api/data/:groupId', async (req, res) => {
 });
 
 // ** --- 7. POST ENDPOINT FOR USER REGISTRATION --- **
-app.post('/api/register', async (req, res) => {
+app.post('/register', async (req, res) => {
     // Check if registration database is available
     if (!registerPool) {
         return res.status(503).json({
