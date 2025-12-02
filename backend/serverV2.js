@@ -189,9 +189,21 @@ async function initializeDatabase() {
     }
 }
 
+// --- Eenvoudige Authenticatie: Controleer userId ---
+function checkAuth(req, res, next) {
+    const userId = req.headers['x-user-id'];
+    
+    if (userId) {
+        req.userId = userId;
+        next();
+    } else {
+        res.status(401).json({ message: 'Login vereist' });
+    }
+}
+
 // ** --- 3. GET ENDPOINT VOOR DATA OPHALEN (READ) --- **
 // Haalt de data op en ontsleutelt het wachtwoord voor de client
-router.get('/getData', async (req, res) => {
+router.get('/getData', checkAuth, async (req, res) => {
     const selectQuery = `
         SELECT GroupId, Username, Password, Domain 
         FROM FormSubmission 
@@ -219,7 +231,7 @@ router.get('/getData', async (req, res) => {
 
 // ** --- 4. POST ENDPOINT VOOR OPSLAG (CREATE) --- **
 // Versleutelt het wachtwoord voordat het wordt opgeslagen
-router.post('/saveData', async (req, res) => {
+router.post('/saveData', checkAuth, async (req, res) => {
     const { GroupId, Username, Password, Domain } = req.body;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
@@ -257,7 +269,7 @@ router.post('/saveData', async (req, res) => {
 });
 
 // ** --- 5. PUT ENDPOINT VOOR UPDATE (UPDATE) --- **
-router.put('/data/:groupId', async (req, res) => {
+router.put('/data/:groupId', checkAuth, async (req, res) => {
     const groupId = req.params.groupId;
     const { Username, Password, Domain } = req.body;
 
@@ -319,7 +331,7 @@ router.put('/data/:groupId', async (req, res) => {
 
 
 // ** --- 6. DELETE ENDPOINT VOOR VERWIJDERING (DELETE) --- **
-router.delete('/data/:groupId', async (req, res) => {
+router.delete('/data/:groupId', checkAuth, async (req, res) => {
     const groupId = req.params.groupId;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
