@@ -126,6 +126,61 @@ app.post('/register', async (req, res) => {
     }
 });
 
+// 🌐 POST-route voor het inloggen van een gebruiker
+app.post('/api/check', async (req, res) => {
+    // 1. INPUT OPHALEN (gebruik de 'name' attributen uit je loginV3.html)
+    const { email, password } = req.body;
+
+    // Basale validatie
+    if (!email || !password) {
+        return res.status(400).send('Fout: E-mail en Wachtwoord zijn vereist.');
+    }
+
+    if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
+
+    let userRecord;
+
+    try {
+        // 2. GEBRUIKER ZOEKEN OP E-MAIL
+        const request = pool.request();
+
+        // Gebruik geparametriseerde query om de hash op te halen
+        const result = await request
+            .input('emailParam', sql.VarChar(100), email)
+            .query(`SELECT PasswordHash, Username FROM tbl_Users WHERE Email = @emailParam`);
+
+        userRecord = result.recordset[0];
+
+        // 3. CONTROLEER OF DE GEBRUIKER BESTAAT
+        if (!userRecord) {
+            // Belangrijk: Geef een generieke foutmelding terug om geen informatie te lekken over e-mails
+            return res.status(401).send('Onjuiste e-mail of wachtwoord.');
+        }
+
+        // 4. WACHTWOORD VERGELIJKEN (De beveiligde stap!)
+        const storedHash = userRecord.PasswordHash.trim(); // Trimmen is vaak nodig voor CHAR(60)
+
+        // Vergelijkt het platte wachtwoord met de gehashte waarde in de database
+        const match = await bcrypt.compare(password, storedHash);
+
+        if (match) {
+            // 5. SUCCES: Ingelogd!
+            console.log(`Gebruiker ${userRecord.Username} is succesvol ingelogd.`);
+
+            // ⭐ Optioneel: Je kunt hier de gebruiker doorsturen naar een dashboardpagina
+            return res.redirect('/mvpV3.html');
+
+        } else {
+            // 6. MISLUKT: Wachtwoord komt niet overeen
+            return res.status(401).send('Onjuiste e-mail of wachtwoord.');
+        }
+
+    } catch (err) {
+        console.error("Fout bij inloggen:", err.message);
+        return res.status(500).send('Interne serverfout tijdens inloggen.');
+    }
+});
+
 // Start de server nadat de DB is geïnitialiseerd
 initializeDatabase().then(() => {
     app.listen(port, () => {
