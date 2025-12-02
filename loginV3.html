@@ -19,19 +19,19 @@
     </div>
 
     <div class="wrapper">
-        <form>
+        <form action="/api/check" method="post">
 
             <h3 class="form-title">Sign In</h3>
             <p class="form-subtitle">Access your secure password vault</p>
 
             <div class="input-box">
                 <i class="fa-solid fa-envelope icon-left"></i>
-                <input type="email" placeholder="user123@gmail.com" required>
+                <input type="email" placeholder="user123@gmail.com" name="email" required>
             </div>
 
             <div class="input-box">
                 <i class="fa-solid fa-lock icon-left"></i>
-                <input type="password" placeholder="Password" required id="myInput">
+                <input type="password" placeholder="Password" name="password" required id="myInput">
                 <i class="fa-solid fa-eye icon-right"></i>
             </div>
 
@@ -45,7 +45,7 @@
 
 
 
-            <button type="submit" class="btn" onclick="location.href='mvpV3.html'">Sign In</button>
+            <button type="submit" class="btn">Sign In</button>
 
             <div class="register-link">
                 <p>Don't have an account? <a href="registerV3.html">Create one</a></p>
@@ -56,7 +56,7 @@
         </form>
     </div>
 
-    <p class="footer-text">Your data is encrypted and secure 🔒</p>
+    <p class="footer-text">Your data is encrypted and secure </p>
 
 </body>
 
