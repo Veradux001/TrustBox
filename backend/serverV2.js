@@ -7,6 +7,7 @@ const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const app = express();
+const router = express.Router();
 const port = process.env.PORT || 3000;
 
 // --- Validation Constants ---
@@ -192,7 +193,7 @@ async function initializeDatabase() {
 
 // ** --- 3. GET ENDPOINT VOOR DATA OPHALEN (READ) --- **
 // Haalt de data op en ontsleutelt het wachtwoord voor de client
-app.get('/getData', async (req, res) => {
+router.get('/getData', async (req, res) => {
     const selectQuery = `
         SELECT GroupId, Username, Password, Domain 
         FROM FormSubmission 
@@ -220,7 +221,7 @@ app.get('/getData', async (req, res) => {
 
 // ** --- 4. POST ENDPOINT VOOR OPSLAG (CREATE) --- **
 // Versleutelt het wachtwoord voordat het wordt opgeslagen
-app.post('/saveData', async (req, res) => {
+router.post('/saveData', async (req, res) => {
     const { GroupId, Username, Password, Domain } = req.body;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
@@ -258,7 +259,7 @@ app.post('/saveData', async (req, res) => {
 });
 
 // ** --- 5. PUT ENDPOINT VOOR UPDATE (UPDATE) --- **
-app.put('/data/:groupId', async (req, res) => {
+router.put('/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
     const { Username, Password, Domain } = req.body;
 
@@ -320,7 +321,7 @@ app.put('/data/:groupId', async (req, res) => {
 
 
 // ** --- 6. HET DELETE ENDPOINT VOOR VERWIJDERING (DELETE) --- **
-app.delete('/data/:groupId', async (req, res) => {
+router.delete('/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
@@ -350,7 +351,7 @@ app.delete('/data/:groupId', async (req, res) => {
 });
 
 // ** --- 7. POST ENDPOINT FOR USER REGISTRATION --- **
-app.post('/register', async (req, res) => {
+router.post('/register', async (req, res) => {
     // Check if registration database is available
     if (!registerPool) {
         return res.status(503).json({
@@ -482,7 +483,7 @@ app.post('/register', async (req, res) => {
 });
 
 // ** --- 8. POST ENDPOINT FOR USER LOGIN --- **
-app.post('/login', async (req, res) => {
+router.post('/login', async (req, res) => {
     // Check if registration database is available (we use same DB for login)
     if (!registerPool) {
         return res.status(503).json({
@@ -564,6 +565,9 @@ app.post('/login', async (req, res) => {
         });
     }
 });
+
+// Mount the API router under /api prefix
+app.use('/api', router);
 
 // --- 9. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
 initializeDatabase().then(() => {
