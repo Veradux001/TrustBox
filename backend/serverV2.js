@@ -6,6 +6,7 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
+const session = require('express-session');
 const app = express();
 const router = express.Router();
 const port = process.env.PORT || 3000;
@@ -155,6 +156,18 @@ app.use(cors({
     credentials: true
 }));
 
+// Sessie configuratie voor authenticatie
+app.use(session({
+    secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 uur
+    }
+}));
+
 // Statische bestanden dienen
 app.use(express.static(path.join(__dirname, '')));
 
@@ -168,6 +181,20 @@ app.get('/', (_req, res) => {
 // Globale databaseverbinding pool
 let pool;
 let registerPool;
+
+// --- Authenticatie Middleware ---
+/**
+ * Middleware om te controleren of gebruiker is ingelogd
+ * Vereist dat req.session.userId bestaat
+ */
+function requireAuth(req, res, next) {
+    if (!req.session || !req.session.userId) {
+        return res.status(401).json({
+            message: 'Authenticatie vereist. Log eerst in.'
+        });
+    }
+    next();
+}
 
 // Functie om de databaseverbinding te initialiseren
 async function initializeDatabase() {
@@ -191,7 +218,7 @@ async function initializeDatabase() {
 
 // ** --- 3. GET ENDPOINT VOOR DATA OPHALEN (READ) --- **
 // Haalt de data op en ontsleutelt het wachtwoord voor de client
-router.get('/getData', async (req, res) => {
+router.get('/getData', requireAuth, async (req, res) => {
     const selectQuery = `
         SELECT GroupId, Username, Password, Domain 
         FROM FormSubmission 
@@ -219,7 +246,7 @@ router.get('/getData', async (req, res) => {
 
 // ** --- 4. POST ENDPOINT VOOR OPSLAG (CREATE) --- **
 // Versleutelt het wachtwoord voordat het wordt opgeslagen
-router.post('/saveData', async (req, res) => {
+router.post('/saveData', requireAuth, async (req, res) => {
     const { GroupId, Username, Password, Domain } = req.body;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
@@ -257,7 +284,7 @@ router.post('/saveData', async (req, res) => {
 });
 
 // ** --- 5. PUT ENDPOINT VOOR UPDATE (UPDATE) --- **
-router.put('/data/:groupId', async (req, res) => {
+router.put('/data/:groupId', requireAuth, async (req, res) => {
     const groupId = req.params.groupId;
     const { Username, Password, Domain } = req.body;
 
@@ -319,7 +346,7 @@ router.put('/data/:groupId', async (req, res) => {
 
 
 // ** --- 6. DELETE ENDPOINT VOOR VERWIJDERING (DELETE) --- **
-router.delete('/data/:groupId', async (req, res) => {
+router.delete('/data/:groupId', requireAuth, async (req, res) => {
     const groupId = req.params.groupId;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
@@ -545,6 +572,11 @@ router.post('/login', async (req, res) => {
         }
 
         // --- Succesvolle Login ---
+        // Maak sessie aan
+        req.session.userId = user.UserId;
+        req.session.username = user.Username;
+        req.session.email = user.Email;
+
         // Geef gebruikersinformatie terug (zonder wachtwoord hash)
         res.status(200).json({
             message: 'Login succesvol!',
@@ -564,10 +596,24 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// ** --- 9. POST ENDPOINT VOOR LOGOUT --- **
+router.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({
+                message: 'Fout bij uitloggen.'
+            });
+        }
+        res.status(200).json({
+            message: 'Succesvol uitgelogd.'
+        });
+    });
+});
+
 // Koppel de API router aan root (Nginx verwijdert /api prefix voordat het naar backend proxied)
 app.use('/', router);
 
-// --- 9. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
+// --- 10. Server Luisteren (Start de app nadat de DB is geïnitialiseerd) ---
 initializeDatabase().then(() => {
     app.listen(port, () => {
         console.log(`CRUD Server draait op http://localhost:${port}.`);
