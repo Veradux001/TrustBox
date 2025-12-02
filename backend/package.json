@@ -6,7 +6,22 @@
   "scripts": {
     "start": "node serverV2.js",
     "dev": "nodemon serverV2.js",
-    "register": "node registerserver.js"
+    "register": "node registerserver.js",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "serverV2.js",
+      "!node_modules/**"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -16,6 +31,8 @@
     "mssql": "^12.1.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.0.0"
   }
 }
