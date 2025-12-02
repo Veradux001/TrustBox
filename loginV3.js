@@ -1,7 +1,7 @@
 // API Configuratie - automatisch detecteren van omgeving
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000'
-    : 'https://trustbox.diemitchell.com/api';
+    : `${window.location.protocol}//${window.location.hostname}/api`;
 
 document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('myInput');

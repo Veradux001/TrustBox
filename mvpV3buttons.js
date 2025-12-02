@@ -12,7 +12,7 @@ let fieldCount = 0;
 // API Configuratie: Automatisch detecteren van omgeving (localhost vs productie)
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000'
-    : 'https://trustbox.diemitchell.com/api';
+    : `${window.location.protocol}//${window.location.hostname}/api`;
 
 
 function showMessage(message, type) {

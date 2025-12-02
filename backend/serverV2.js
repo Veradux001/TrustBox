@@ -100,9 +100,7 @@ function decrypt(text) {
 
         // Controleer of de string minstens 2 delen (IV en data) heeft
         if (parts.length < 2) {
-            // Dit gebeurt als je probeert data te decrypten die niet versleuteld is (of corrupt is)
-            console.warn("Decryptie waarschuwing: Ongeldig versleuteld formaat ontvangen");
-            return ''; // Geef lege string terug in plaats van onversleutelde tekst
+            throw new Error('Ongeldig versleuteld formaat - data is mogelijk corrupt');
         }
 
         // De eerste helft is de IV, de rest is de versleutelde data
@@ -117,8 +115,8 @@ function decrypt(text) {
 
         return decrypted;
     } catch (e) {
-        console.error("Decryptie fout (waarschijnlijk verkeerde sleutel of corrupte data):", e.message);
-        return '';
+        console.error("Decryptie fout:", e.message);
+        throw new Error('Wachtwoord kon niet worden ontsleuteld. Neem contact op met support.');
     }
 }
 
