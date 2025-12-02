@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Redirect after a short delay to let user see the message
                 setTimeout(() => {
-                    window.location.href = 'mvpV3.html';
+                    window.location.href = 'loginV3.html';
                 }, 1500);
             } else {
                 // Check if response is JSON

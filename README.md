@@ -1,7 +1,7 @@
 # TrustBox
 
 <div align="center">
-  <img src="trustbox-logo.png.png" alt="TrustBox Logo" width="200"/>
+  <img src="trustbox-logo.png" alt="TrustBox Logo" width="200"/>
   <p><strong>Een veilige, versleutelde wachtwoordbeheerder</strong></p>
   <p>
     <a href="https://trustbox.diemitchell.com">🌐 Live Demo</a> •
@@ -9,6 +9,26 @@
     <a href="LICENSE">📄 Licentie</a>
   </p>
 </div>
+
+---
+
+## 🎉 Recent Updates (December 2025)
+
+### ✅ Authentication & Security Fixes
+- **Implemented Login Endpoint** - Added `/login` API endpoint with bcrypt password verification
+- **Fixed Authentication Flow** - Login page now properly authenticates users before granting access
+- **Protected Routes** - MVP dashboard now requires authentication, redirects unauthorized users
+- **Session Management** - Added localStorage-based session tracking with logout functionality
+- **Logo Asset Fixed** - Corrected logo filename from `trustbox-logo.png.png` to `trustbox-logo.png`
+- **Registration Redirect** - Fixed registration flow to redirect to login page instead of bypassing auth
+- **Reverse Proxy Compatible** - Backend routes configured for proper reverse proxy operation
+
+### 🔐 Security Improvements
+- ✅ No more authentication bypass on login
+- ✅ Protected MVP dashboard with auth check
+- ✅ Proper bcrypt password verification
+- ✅ HTTPS enforcement on login forms
+- ✅ Session management with logout capability
 
 ---
 
@@ -41,10 +61,13 @@ TrustBox is een moderne, veilige wachtwoordbeheerder ontworpen om uw gevoelige i
 
 ### Gebruikersbeheer
 - ✅ **Veilige Registratie** - Account aanmaken met e-mailvalidatie
+- ✅ **Login Authenticatie** - Veilige inlogfunctionaliteit met bcrypt verificatie
+- ✅ **Beveiligde Sessies** - LocalStorage-gebaseerd sessiebeheer
+- ✅ **Logout Functionaliteit** - Veilig uitloggen met sessie-opruiming
 - ✅ **Wachtwoordsterkte-indicator** - Real-time feedback over wachtwoordkwaliteit (zwak/gemiddeld/sterk)
 - ✅ **Bcrypt Hashing** - Industriestandaard wachtwoordversleuteling (12 salt rounds)
-- ✅ **Inloggen met "Onthoud mij"** - Blijf ingelogd op vertrouwde apparaten
-- ✅ **Wachtwoord Vergeten** - Functionaliteit voor wachtwoordherstel
+- ✅ **Beveiligde Routes** - Dashboard beschermd met authenticatiecheck
+- ⏳ **Wachtwoord Vergeten** - Functionaliteit voor wachtwoordherstel (in ontwikkeling)
 - ✅ **Gemachtigde Toegang** - Optie om een gemachtigde persoon toe te wijzen
 
 ### Wachtwoordopslag & Beheer
