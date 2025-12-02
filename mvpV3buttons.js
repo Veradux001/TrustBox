@@ -2,15 +2,17 @@
 let groupCount = 0;
 let fieldCount = 0;
 
-// --- 0. HULPFUNCTIE: Custom Meldingen (vervangt alert() en confirm()) ---
+// --- 0. HULPFUNCTIE: Aangepaste Meldingen (vervangt alert() en confirm()) ---
 
 /**
  * Toont een tijdelijke, aangepaste melding (toast).
- * @param {string} message De te tonen tekst.
- * @param {('success'|'error'|'warning')} type Het type melding (bepaalt de kleur).
+ * @param {string} message - De te tonen tekst.
+ * @param {('success'|'error'|'warning')} type - Het type melding (bepaalt de kleur).
  */
-// API Configuration: Points to the Node.js backend
-const API_BASE_URL = 'https://trustbox.diemitchell.com/api';
+// API Configuratie: Automatisch detecteren van omgeving (localhost vs productie)
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : `${window.location.protocol}//${window.location.hostname}/api`;
 
 
 function showMessage(message, type) {
@@ -64,10 +66,10 @@ function createMessageContainer() {
 }
 
 
-// --- 1. FUNCTIONALITEIT: DATA OPHALEN EN RENDERING ---
+// --- 1. FUNCTIONALITEIT: DATA OPHALEN EN WEERGEVEN ---
 
 /**
- * Laadt data van de server, inclusief ontsleutelde wachtwoorden, en rendert de formuliergroepen.
+ * Laadt data van de server, inclusief ontsleutelde wachtwoorden, en toont de formuliergroepen.
  */
 async function loadDataAndRender() {
     const formContainer = document.getElementById('mvp-form');
@@ -87,7 +89,7 @@ async function loadDataAndRender() {
 
         let highestGroupId = 0;
 
-        // Render elke opgeslagen groep
+        // Toon elke opgeslagen groep
         data.forEach(item => {
             if (item.GroupId > highestGroupId) {
                 highestGroupId = item.GroupId;
@@ -107,7 +109,7 @@ async function loadDataAndRender() {
         groupCount = highestGroupId;
 
         if (data.length === 0) {
-            // Als er geen data is, render dan de eerste lege groep
+            // Als er geen data is, toon dan de eerste lege groep
             addNewGroup();
         }
 
@@ -143,19 +145,19 @@ function createGroupHTML(id, usernameValue = "", passwordValue = "", domainValue
 
             <div class="input-container grid grid-cols-1 md:grid-cols-3 gap-4 mb-4" id="input-container-${id}">
                 <div class="input-box">
-                    <label for="${usernameName}" class="${labelClasses}">Username</label>
-                    <input type="text" id="${usernameName}" name="${usernameName}" placeholder="Username" 
+                    <label for="${usernameName}" class="${labelClasses}">Gebruikersnaam</label>
+                    <input type="text" id="${usernameName}" name="${usernameName}" placeholder="Gebruikersnaam" 
                             value="${usernameValue}" class="${inputClasses}">
                 </div>
                 <div class="input-box">
-                    <label for="${passwordName}" class="${labelClasses}">Password</label>
+                    <label for="${passwordName}" class="${labelClasses}">Wachtwoord</label>
                     <!-- Type is 'text' om de ontsleutelde waarde zichtbaar te maken -->
-                    <input type="text" id="${passwordName}" name="${passwordName}" placeholder="Password" 
+                    <input type="text" id="${passwordName}" name="${passwordName}" placeholder="Wachtwoord" 
                             value="${passwordValue}" class="${inputClasses}">
                 </div>
                 <div class="input-box">
-                    <label for="${domainName}" class="${labelClasses}">Domain</label>
-                    <input type="text" id="${domainName}" name="${domainName}" placeholder="Domain" 
+                    <label for="${domainName}" class="${labelClasses}">Domein</label>
+                    <input type="text" id="${domainName}" name="${domainName}" placeholder="Domein" 
                             value="${domainValue}" class="${inputClasses}">
                 </div>
             </div>
@@ -164,19 +166,19 @@ function createGroupHTML(id, usernameValue = "", passwordValue = "", domainValue
                 <button type="button" 
                         onclick="saveDataToServer(${id}, '${usernameName}', '${passwordName}', '${domainName}')"
                         class="${saveButtonClasses}">
-                     Save
+                     Opslaan
                 </button>
 
                 <button type="button" 
                         onclick="updateDataToServer(${id}, '${usernameName}', '${passwordName}', '${domainName}')"
                         class="${updateButtonClasses}">
-                     Update 
+                     Bijwerken 
                 </button>
                 
                 <button type="button" 
                         onclick="removeGroupContent(${id})"
                         class="${deleteButtonClasses}">
-                     Delete
+                     Verwijderen
                 </button>
             </div>
         </div>
@@ -206,7 +208,7 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     const groupContainer = document.getElementById(`input-container-${id}`);
 
     if (!groupContainer) {
-        showMessage("Can't find group to save.", 'error');
+        showMessage("Kan groep niet vinden om op te slaan.", 'error');
         return;
     }
 
@@ -218,7 +220,7 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     };
 
     if (!userData.Username || !userData.Password || !userData.Domain) {
-        showMessage("Please complete all fields before saving. Password is required INSERT.", 'warning');
+        showMessage("Vul alle velden in voordat je opslaat. Wachtwoord is verplicht voor INSERT.", 'warning');
         return;
     }
 
@@ -231,25 +233,25 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     })
         .then(response => {
             if (response.ok) {
-                showMessage('success');
+                showMessage('✓ Data succesvol opgeslagen!', 'success');
                 loadDataAndRender();
             } else {
                 // Verbeterde foutafhandeling voor niet-JSON antwoorden
                 return response.json()
                     .then(err => {
                         // Gooi de foutmelding uit de JSON-body, of een algemene foutmelding als de body leeg is
-                        throw new Error(err.message || `Unknown server error (${response.status}) on Save.`);
+                        throw new Error(err.message || `Onbekende serverfout (${response.status}) bij Opslaan.`);
                     })
                     .catch(() => {
                         // Als de JSON-parsing mislukt (bijvoorbeeld bij een HTML-foutpagina), geef een algemene foutmelding
-                        throw new Error(`Server error: Could not process response (Status: ${response.status}). Check that the Node.js server is running.`);
+                        throw new Error(`Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`);
                     });
             }
         })
         .catch(error => {
             // Vereenvoudigde, robuustere foutmelding
-            showMessage(`❌ Error saving ${error.message}`, 'error');
-            console.error('Save error:', error);
+            showMessage(`❌ Fout bij opslaan: ${error.message}`, 'error');
+            console.error('Opslagfout:', error);
         });
 }
 
@@ -262,7 +264,7 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     const groupContainer = document.getElementById(`input-container-${id}`);
 
     if (!groupContainer) {
-        showMessage("Can't update.", 'error');
+        showMessage("Kan niet bijwerken.", 'error');
         return;
     }
 
@@ -273,7 +275,7 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     };
 
     if (!userData.Username || !userData.Domain) {
-        showMessage("Username and Domain are required for updating.", 'warning');
+        showMessage("Gebruikersnaam en Domein zijn verplicht voor bijwerken.", 'warning');
         return;
     }
 
@@ -287,25 +289,25 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
         .then(response => {
             if (response.ok) {
                 const passwordStatus = userData.Password.trim() === '' ? 'ongewijzigd' : 'opnieuw versleuteld';
-                showMessage(`successfully updated (UPDATE). Password is ${passwordStatus}.`, 'success');
+                showMessage(`✓ Data succesvol bijgewerkt (UPDATE). Wachtwoord is ${passwordStatus}.`, 'success');
                 loadDataAndRender();
             } else {
                 // Verbeterde foutafhandeling voor niet-JSON antwoorden
                 return response.json()
                     .then(err => {
                         // Gooi de foutmelding uit de JSON-body, of een algemene foutmelding als de body leeg is
-                        throw new Error(err.message || `Unknow server error (${response.status}) on Update.`);
+                        throw new Error(err.message || `Onbekende serverfout (${response.status}) bij Bijwerken.`);
                     })
                     .catch(() => {
                         // Als de JSON-parsing mislukt (bijvoorbeeld bij een HTML-foutpagina), geef een algemene foutmelding
-                        throw new Error(`Server error: Couldn't process reply (Status: ${response.status}). Check if the Node.js server is running.`);
+                        throw new Error(`Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`);
                     });
             }
         })
         .catch(error => {
             // Vereenvoudigde, robuustere foutmelding
-            showMessage(`Error updating. Details: ${error.message}`, 'error');
-            console.error('Update error:', error);
+            showMessage(`❌ Fout bij bijwerken. Details: ${error.message}`, 'error');
+            console.error('Bijwerkfout:', error);
         });
 }
 
@@ -323,10 +325,10 @@ function deleteDataFromServer(groupId) {
     })
         .then(response => {
             if (response.status === 404) {
-                throw new Error("Record not found in database. Will only be deleted locally..");
+                throw new Error("Record niet gevonden in database. Wordt alleen lokaal verwijderd.");
             }
             if (!response.ok) {
-                throw new Error(`Server error: status ${response.status}`);
+                throw new Error(`Serverfout: status ${response.status}`);
             }
             return response.text();
         });
@@ -342,18 +344,18 @@ function removeGroupContent(id) {
             if (groupDiv) {
                 groupDiv.remove();
             }
-            showMessage(` successfully removed from database and screen.`, 'success');
+            showMessage(`✓ Data succesvol verwijderd uit database en scherm.`, 'success');
             loadDataAndRender();
         })
         .catch(error => {
-            if (error.message.includes("Record not found")) {
+            if (error.message.includes("Record niet gevonden")) {
                 const groupDiv = document.getElementById(`group-${id}`);
                 if (groupDiv) {
                     groupDiv.remove();
                 }
-                showMessage(`Data was not in the database, but field is deleted.`, 'warning');
+                showMessage(`⚠️ Data stond niet in de database, maar veld is verwijderd.`, 'warning');
             } else {
-                showMessage(`Error while deleting ${error.message}. Controleer Node.js server.`, 'error');
+                showMessage(`❌ Fout bij verwijderen: ${error.message}. Controleer Node.js server.`, 'error');
                 console.error(error);
             }
             loadDataAndRender();
@@ -362,4 +364,3 @@ function removeGroupContent(id) {
 
 // De initiële laadfunctie wordt uitgevoerd bij het laden van het script.
 loadDataAndRender();
-

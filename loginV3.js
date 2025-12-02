@@ -1,5 +1,7 @@
-// API Configuration
-const API_BASE_URL = 'https://trustbox.diemitchell.com/api';
+// API Configuratie - automatisch detecteren van omgeving
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : `${window.location.protocol}//${window.location.hostname}/api`;
 
 document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('myInput');
@@ -9,21 +11,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('loginForm');
     const submitButton = form.querySelector('button[type="submit"]');
 
-    // Toggle password visibility with eye icon
+    // Schakel wachtwoord zichtbaarheid met oogicoon
     if (togglePassword) {
         togglePassword.addEventListener('click', function() {
             myFunction();
         });
     }
 
-    // Toggle password visibility with checkbox
+    // Schakel wachtwoord zichtbaarheid met checkbox
     if (showPasswordCheckbox) {
         showPasswordCheckbox.addEventListener('change', function() {
             myFunction();
         });
     }
 
-    // Password visibility toggle function
+    // Functie voor wachtwoord zichtbaarheid schakelen
     function myFunction() {
         if (passwordInput.type === "password") {
             passwordInput.type = "text";
@@ -46,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Show message to user
+    // Toon melding aan gebruiker
     function showMessage(message, type) {
         messageContainer.style.display = 'block';
         messageContainer.textContent = message;
@@ -61,62 +63,62 @@ document.addEventListener('DOMContentLoaded', function() {
             messageContainer.style.border = '1px solid #cfc';
         }
 
-        // Scroll to message
+        // Scroll naar melding
         messageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // Hide message
+    // Verberg melding
     function hideMessage() {
         messageContainer.style.display = 'none';
     }
 
-    // Check if HTTPS is being used
+    // Controleer of HTTPS wordt gebruikt
     function isSecureConnection() {
         return window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     }
 
-    // Handle form submission
+    // Behandel formulier inzending
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         hideMessage();
 
-        // Check for secure connection
+        // Controleer op veilige verbinding
         if (!isSecureConnection()) {
-            showMessage('🔒 Error: Login must be done over HTTPS for security.', 'error');
+            showMessage('🔒 Fout: Login moet via HTTPS gebeuren voor beveiliging.', 'error');
             return;
         }
 
-        // Get form data
+        // Haal formulierdata op
         const emailInput = form.querySelector('input[name="email"]');
         const passwordInput = form.querySelector('input[name="password"]');
 
         if (!emailInput || !passwordInput) {
-            showMessage('Error: Form elements are missing. Please refresh the page.', 'error');
+            showMessage('Fout: Formulierelementen ontbreken. Ververs de pagina.', 'error');
             return;
         }
 
         const email = emailInput.value.trim();
         const password = passwordInput.value;
 
-        // Basic validation
+        // Basis validatie
         if (!email || !password) {
-            showMessage('Please enter both email and password.', 'error');
+            showMessage('Vul zowel e-mail als wachtwoord in.', 'error');
             return;
         }
 
-        // Prepare data for API
+        // Bereid data voor API voor
         const loginData = {
             email: email,
             password: password
         };
 
-        // Disable submit button and show loading state
+        // Schakel verzendknop uit en toon laadstatus
         submitButton.disabled = true;
         const originalButtonText = submitButton.textContent;
-        submitButton.textContent = 'Signing In...';
+        submitButton.textContent = 'Inloggen...';
 
         try {
-            // Submit to API
+            // Verstuur naar API
             const response = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 headers: {
@@ -126,40 +128,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 credentials: 'same-origin'
             });
 
-            // Handle response
+            // Behandel response
             if (response.ok) {
                 const data = await response.json();
 
-                // Store user info in localStorage for session management
+                // Sla gebruikersinformatie op in localStorage voor sessiebeheer
                 localStorage.setItem('trustbox_user', JSON.stringify(data.user));
                 localStorage.setItem('trustbox_logged_in', 'true');
 
-                showMessage('✓ Login successful! Redirecting...', 'success');
+                showMessage('✓ Login succesvol! Doorverwijzen...', 'success');
 
-                // Redirect after a short delay
+                // Doorverwijzen na korte vertraging
                 setTimeout(() => {
                     window.location.href = 'mvpV3.html';
                 }, 1000);
             } else {
-                // Handle error response
+                // Behandel foutresponse
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
                     const data = await response.json();
-                    showMessage(data.message || 'Login failed. Please try again.', 'error');
+                    showMessage(data.message || 'Login mislukt. Probeer opnieuw.', 'error');
                 } else {
                     const text = await response.text();
-                    showMessage(text || 'Login failed. Please check your credentials.', 'error');
+                    showMessage(text || 'Login mislukt. Controleer je inloggegevens.', 'error');
                 }
 
-                // Re-enable submit button
+                // Schakel verzendknop weer in
                 submitButton.disabled = false;
                 submitButton.textContent = originalButtonText;
             }
         } catch (error) {
-            console.error('Error during login:', error);
-            showMessage('An error occurred during login. Please check your connection and try again.', 'error');
+            console.error('Fout tijdens login:', error);
+            showMessage('Er is een fout opgetreden tijdens het inloggen. Controleer je verbinding en probeer opnieuw.', 'error');
 
-            // Re-enable submit button
+            // Schakel verzendknop weer in
             submitButton.disabled = false;
             submitButton.textContent = originalButtonText;
         }
