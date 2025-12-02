@@ -253,8 +253,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Handle response
             if (response.ok) {
-                const data = await response.json();
-                showMessage('✓ Account created successfully! Redirecting to login...', 'success');
+                // Check if response is JSON before parsing
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    showMessage('✓ Account created successfully! Redirecting to login...', 'success');
+                } else {
+                    // Handle plain text success response (for backward compatibility)
+                    const text = await response.text();
+                    showMessage('✓ Account created successfully! Redirecting to login...', 'success');
+                }
 
                 // Redirect after a short delay to let user see the message
                 setTimeout(() => {
