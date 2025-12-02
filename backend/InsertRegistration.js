@@ -9,6 +9,8 @@ const port = process.env.PORT || 3000;
 
 // Middleware om URL-gecodeerde formuliergegevens te verwerken (nodig voor HTML forms)
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+// Middleware om JSON data te verwerken (nodig voor fetch() requests)
+app.use(express.json({ limit: '1mb' }));
 // Middleware om statische bestanden (zoals je HTML/CSS) te serveren
 
 
