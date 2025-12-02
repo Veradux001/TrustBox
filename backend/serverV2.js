@@ -207,13 +207,16 @@ router.get('/getData', checkAuth, async (req, res) => {
     const selectQuery = `
         SELECT GroupId, Username, Password, Domain 
         FROM FormSubmission 
+        WHERE UserId = @UserId
         ORDER BY GroupId ASC;
     `;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
 
     try {
-        const result = await pool.request().query(selectQuery);
+        const request = pool.request();
+        request.input('UserId', sql.Int, req.userId);
+        const result = await request.query(selectQuery);
 
         // Ontsleutel de wachtwoorden voordat ze naar de client gaan
         const decryptedData = result.recordset.map(record => ({
@@ -250,15 +253,16 @@ router.post('/saveData', checkAuth, async (req, res) => {
         const encryptedPassword = encrypt(Password);
 
         const insertQuery = `
-            INSERT INTO FormSubmission (GroupId, Username, Password, Domain)
-            VALUES (@GroupId, @Username, @EncryptedPassword, @Domain);
+            INSERT INTO FormSubmission (GroupId, Username, Password, Domain, UserId)
+            VALUES (@GroupId, @Username, @EncryptedPassword, @Domain, @UserId);
         `;
 
         const request = pool.request();
         request.input('GroupId', sql.Int, validatedGroupId);
         request.input('Username', sql.NVarChar, validatedUsername);
-        request.input('EncryptedPassword', sql.NVarChar, encryptedPassword); // Gebruik versleuteld wachtwoord
+        request.input('EncryptedPassword', sql.NVarChar, encryptedPassword);
         request.input('Domain', sql.NVarChar, validatedDomain);
+        request.input('UserId', sql.Int, req.userId);
         await request.query(insertQuery);
 
         res.status(201).json({ message: `Data voor Groep ${validatedGroupId} succesvol opgeslagen (INSERT) en Wachtwoord versleuteld.` });
@@ -295,7 +299,7 @@ router.put('/data/:groupId', checkAuth, async (req, res) => {
                 SET Username = @Username, 
                     Password = @EncryptedPassword, 
                     Domain = @Domain
-                WHERE GroupId = @GroupId;
+                WHERE GroupId = @GroupId AND UserId = @UserId;
             `;
         } else {
             // Als het wachtwoordveld leeg is, BEHOUDEN we het OUDE versleutelde wachtwoord.
@@ -303,7 +307,7 @@ router.put('/data/:groupId', checkAuth, async (req, res) => {
                 UPDATE FormSubmission 
                 SET Username = @Username, 
                     Domain = @Domain
-                WHERE GroupId = @GroupId;
+                WHERE GroupId = @GroupId AND UserId = @UserId;
             `;
         }
 
@@ -311,6 +315,7 @@ router.put('/data/:groupId', checkAuth, async (req, res) => {
         request.input('GroupId', sql.Int, validatedGroupId);
         request.input('Username', sql.NVarChar, validatedUsername);
         request.input('Domain', sql.NVarChar, validatedDomain);
+        request.input('UserId', sql.Int, req.userId);
 
         if (encryptedPassword) {
             request.input('EncryptedPassword', sql.NVarChar, encryptedPassword);
@@ -338,7 +343,7 @@ router.delete('/data/:groupId', checkAuth, async (req, res) => {
 
     const deleteQuery = `
         DELETE FROM FormSubmission
-        WHERE GroupId = @GroupId;
+        WHERE GroupId = @GroupId AND UserId = @UserId;
     `;
 
     try {
@@ -347,6 +352,7 @@ router.delete('/data/:groupId', checkAuth, async (req, res) => {
 
         const request = pool.request();
         request.input('GroupId', sql.Int, validatedGroupId);
+        request.input('UserId', sql.Int, req.userId);
         const result = await request.query(deleteQuery);
 
         if (result.rowsAffected[0] === 0) {
