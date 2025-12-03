@@ -309,39 +309,28 @@ router.put('/data/:groupId', async (req, res) => {
         const validatedDomain = validateStringLength(Domain, 'Domain', 255);
 
         // Valideer en versleutel wachtwoord als het is opgegeven
-        if (Password !== undefined && Password !== null) {
-            // Alleen versleutelen als het wachtwoord niet leeg is
-            if (Password.trim() !== "") {
-                // Valideer wachtwoord met gedeelde validatie functie
-                const validatedPassword = validatePassword(Password, 'Wachtwoord', false);
+        if (Password !== undefined && Password !== null && Password !== '') {
+            // Valideer wachtwoord met gedeelde validatie functie EERST
+            const validatedPassword = validatePassword(Password, 'Wachtwoord', false);
 
-                // Als er een NIEUW wachtwoord is ingevoerd, VERSLEUTEL het
-                try {
-                    encryptedPassword = encrypt(validatedPassword);
-                } catch (encryptError) {
-                    console.error("Encryptie fout bij update:", encryptError.message);
-                    console.error("Volledige encryptie fout:", encryptError);
-                    return res.status(500).json({ message: 'Fout bij het versleutelen van het wachtwoord.' });
-                }
-
-                updateQuery = `
-                    UPDATE FormSubmission
-                    SET Username = @Username,
-                        Password = @EncryptedPassword,
-                        Domain = @Domain
-                    WHERE GroupId = @GroupId;
-                `;
-            } else {
-                // Als het wachtwoordveld leeg is, BEHOUDEN we het OUDE versleutelde wachtwoord.
-                updateQuery = `
-                    UPDATE FormSubmission
-                    SET Username = @Username,
-                        Domain = @Domain
-                    WHERE GroupId = @GroupId;
-                `;
+            // Als er een NIEUW wachtwoord is ingevoerd, VERSLEUTEL het
+            try {
+                encryptedPassword = encrypt(validatedPassword);
+            } catch (encryptError) {
+                console.error("Encryptie fout bij update:", encryptError.message);
+                console.error("Volledige encryptie fout:", encryptError);
+                return res.status(500).json({ message: 'Fout bij het versleutelen van het wachtwoord.' });
             }
+
+            updateQuery = `
+                UPDATE FormSubmission
+                SET Username = @Username,
+                    Password = @EncryptedPassword,
+                    Domain = @Domain
+                WHERE GroupId = @GroupId;
+            `;
         } else {
-            // Als Password niet is opgegeven, behoud het oude wachtwoord
+            // Als Password niet is opgegeven of leeg is, behoud het oude wachtwoord
             updateQuery = `
                 UPDATE FormSubmission
                 SET Username = @Username,
