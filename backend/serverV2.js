@@ -66,6 +66,27 @@ function validateStringLength(value, fieldName, maxLength) {
     return value.trim();
 }
 
+/**
+ * Valideert een wachtwoord voor encryptie
+ * @param {*} password - Het te valideren wachtwoord
+ * @param {string} fieldName - De naam van het veld (voor foutmeldingen)
+ * @param {boolean} allowEmpty - Of lege strings toegestaan zijn
+ * @returns {string} Het gevalideerde wachtwoord
+ * @throws {Error} Als het wachtwoord ongeldig is
+ */
+function validatePassword(password, fieldName = 'Wachtwoord', allowEmpty = false) {
+    if (typeof password !== 'string') {
+        throw new Error(`${fieldName} moet een string zijn`);
+    }
+    if (!allowEmpty && password.trim() === '') {
+        throw new Error(`${fieldName} mag niet leeg zijn`);
+    }
+    if (password.length > 1000) { // Redelijke maximale lengte
+        throw new Error(`${fieldName} overschrijdt de maximale lengte van 1000 karakters`);
+    }
+    return password;
+}
+
 // --- Encryptie/Decryptie Functies ---
 
 /**
@@ -234,17 +255,16 @@ router.post('/saveData', async (req, res) => {
         const validatedUsername = validateStringLength(Username, 'Username', 255);
         const validatedDomain = validateStringLength(Domain, 'Domain', 255);
 
-        // Valideer dat Password een string is
-        if (typeof Password !== 'string' || Password.trim() === '') {
-            return res.status(400).json({ message: 'Wachtwoord moet een niet-lege string zijn.' });
-        }
+        // Valideer wachtwoord met gedeelde validatie functie
+        const validatedPassword = validatePassword(Password, 'Wachtwoord', false);
 
         // 🔒 VERSLEUTEL het wachtwoord voordat het wordt opgeslagen
         let encryptedPassword;
         try {
-            encryptedPassword = encrypt(Password);
+            encryptedPassword = encrypt(validatedPassword);
         } catch (encryptError) {
             console.error("Encryptie fout bij opslag:", encryptError.message);
+            console.error("Volledige encryptie fout:", encryptError);
             return res.status(500).json({ message: 'Fout bij het versleutelen van het wachtwoord.' });
         }
 
@@ -262,9 +282,9 @@ router.post('/saveData', async (req, res) => {
 
         res.status(201).json({ message: `Data voor Groep ${validatedGroupId} succesvol opgeslagen (INSERT) en Wachtwoord versleuteld.` });
     } catch (err) {
-        console.error("SQL Fout bij opslag: ", err.message);
+        console.error("SQL Fout bij opslag:", err.message);
         console.error("Volledige fout:", err);
-        res.status(500).json({ message: `Fout bij het opslaan van data op de server: ${err.message}` });
+        res.status(500).json({ message: 'Fout bij het opslaan van data op de server. Neem contact op met de beheerder.' });
     }
 });
 
@@ -287,29 +307,41 @@ router.put('/data/:groupId', async (req, res) => {
         const validatedGroupId = validateInteger(groupId, 'groupId');
         const validatedUsername = validateStringLength(Username, 'Username', 255);
         const validatedDomain = validateStringLength(Domain, 'Domain', 255);
-        if (Password && Password.trim() !== "") {
-            // Valideer dat Password een string is
-            if (typeof Password !== 'string') {
-                return res.status(400).json({ message: 'Wachtwoord moet een string zijn.' });
-            }
 
-            // Als er een NIEUW wachtwoord is ingevoerd, VERSLEUTEL het
-            try {
-                encryptedPassword = encrypt(Password);
-            } catch (encryptError) {
-                console.error("Encryptie fout bij update:", encryptError.message);
-                return res.status(500).json({ message: 'Fout bij het versleutelen van het wachtwoord.' });
-            }
+        // Valideer en versleutel wachtwoord als het is opgegeven
+        if (Password !== undefined && Password !== null) {
+            // Alleen versleutelen als het wachtwoord niet leeg is
+            if (Password.trim() !== "") {
+                // Valideer wachtwoord met gedeelde validatie functie
+                const validatedPassword = validatePassword(Password, 'Wachtwoord', false);
 
-            updateQuery = `
-                UPDATE FormSubmission
-                SET Username = @Username,
-                    Password = @EncryptedPassword,
-                    Domain = @Domain
-                WHERE GroupId = @GroupId;
-            `;
+                // Als er een NIEUW wachtwoord is ingevoerd, VERSLEUTEL het
+                try {
+                    encryptedPassword = encrypt(validatedPassword);
+                } catch (encryptError) {
+                    console.error("Encryptie fout bij update:", encryptError.message);
+                    console.error("Volledige encryptie fout:", encryptError);
+                    return res.status(500).json({ message: 'Fout bij het versleutelen van het wachtwoord.' });
+                }
+
+                updateQuery = `
+                    UPDATE FormSubmission
+                    SET Username = @Username,
+                        Password = @EncryptedPassword,
+                        Domain = @Domain
+                    WHERE GroupId = @GroupId;
+                `;
+            } else {
+                // Als het wachtwoordveld leeg is, BEHOUDEN we het OUDE versleutelde wachtwoord.
+                updateQuery = `
+                    UPDATE FormSubmission
+                    SET Username = @Username,
+                        Domain = @Domain
+                    WHERE GroupId = @GroupId;
+                `;
+            }
         } else {
-            // Als het wachtwoordveld leeg is, BEHOUDEN we het OUDE versleutelde wachtwoord.
+            // Als Password niet is opgegeven, behoud het oude wachtwoord
             updateQuery = `
                 UPDATE FormSubmission
                 SET Username = @Username,
@@ -335,9 +367,9 @@ router.put('/data/:groupId', async (req, res) => {
 
         res.status(200).json({ message: `Data voor Groep ${validatedGroupId} succesvol bijgewerkt (UPDATE).` });
     } catch (err) {
-        console.error("SQL Fout bij update: ", err.message);
+        console.error("SQL Fout bij update:", err.message);
         console.error("Volledige fout:", err);
-        res.status(500).json({ message: `Fout bij het bijwerken van data op de server: ${err.message}` });
+        res.status(500).json({ message: 'Fout bij het bijwerken van data op de server. Neem contact op met de beheerder.' });
     }
 });
 

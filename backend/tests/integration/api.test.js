@@ -83,10 +83,23 @@ describe('API Integration Tests', () => {
             }
 
             try {
+                // Validate password type
+                if (typeof Password !== 'string') {
+                    return res.status(400).json({ message: 'Wachtwoord moet een string zijn.' });
+                }
+                // Validate password not empty
+                if (Password.trim() === '') {
+                    return res.status(400).json({ message: 'Wachtwoord mag niet leeg zijn.' });
+                }
+                // Validate password length
+                if (Password.length > 1000) {
+                    return res.status(400).json({ message: 'Wachtwoord overschrijdt de maximale lengte van 1000 karakters.' });
+                }
+
                 await mockPool.request().query('INSERT INTO FormSubmission VALUES (...)');
                 res.status(201).json({ message: `Data voor Groep ${GroupId} succesvol opgeslagen (INSERT) en Wachtwoord versleuteld.` });
             } catch (err) {
-                res.status(500).json({ message: 'Fout bij het opslaan van data op de server.' });
+                res.status(500).json({ message: 'Fout bij het opslaan van data op de server. Neem contact op met de beheerder.' });
             }
         });
 
@@ -311,6 +324,49 @@ describe('API Integration Tests', () => {
                 .expect(400);
 
             expect(response.body.message).toBe('Alle velden zijn verplicht.');
+        });
+
+        test('should return 400 for non-string password', async () => {
+            const response = await request(app)
+                .post('/api/saveData')
+                .send({
+                    GroupId: 1,
+                    Username: 'testuser',
+                    Password: 12345, // number instead of string
+                    Domain: 'example.com'
+                })
+                .expect(400);
+
+            expect(response.body.message).toContain('string');
+        });
+
+        test('should return 400 for empty password', async () => {
+            const response = await request(app)
+                .post('/api/saveData')
+                .send({
+                    GroupId: 1,
+                    Username: 'testuser',
+                    Password: '   ', // whitespace only
+                    Domain: 'example.com'
+                })
+                .expect(400);
+
+            expect(response.body.message).toContain('leeg');
+        });
+
+        test('should return 400 for password exceeding maximum length', async () => {
+            const longPassword = 'a'.repeat(1001);
+            const response = await request(app)
+                .post('/api/saveData')
+                .send({
+                    GroupId: 1,
+                    Username: 'testuser',
+                    Password: longPassword,
+                    Domain: 'example.com'
+                })
+                .expect(400);
+
+            expect(response.body.message).toContain('lengte');
         });
     });
 
