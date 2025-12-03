@@ -202,6 +202,38 @@ function addNewGroup() {
 // --- 4. FUNCTIONALITEIT: DATA OPSLAAN (POST - INSERT) ---
 
 /**
+ * Gemeenschappelijke functie voor het afhandelen van API-responses.
+ * Parseert JSON bij succes, extraheert error messages bij fouten.
+ * @param {Response} response - De fetch response
+ * @param {string} operation - Naam van de operatie voor foutmeldingen (bijv. "Opslaan", "Bijwerken")
+ * @returns {Promise<void>}
+ */
+async function handleApiResponse(response, operation) {
+    if (response.ok) {
+        // Probeer JSON te parsen, maar als het mislukt is dat geen probleem
+        try {
+            await response.json();
+        } catch (e) {
+            // Sommige servers retourneren geen JSON body bij succes, dat is ok
+        }
+        return;
+    } else {
+        // Probeer error message uit JSON response te halen
+        let errorMessage = `Onbekende serverfout (${response.status}) bij ${operation}.`;
+        try {
+            const err = await response.json();
+            if (err.message) {
+                errorMessage = err.message;
+            }
+        } catch (e) {
+            // Response is geen JSON, gebruik generieke boodschap
+            errorMessage = `Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`;
+        }
+        throw new Error(errorMessage);
+    }
+}
+
+/**
  * Stuurt de data van een specifieke groep via POST naar de Node.js server (INSERT).
  */
 async function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
@@ -233,29 +265,9 @@ async function saveDataToServer(id, userFieldName, passFieldName, domainFieldNam
             body: JSON.stringify(userData),
         });
 
-        if (response.ok) {
-            // Probeer JSON te parsen, maar als het mislukt is dat geen probleem
-            try {
-                await response.json();
-            } catch (e) {
-                // Sommige servers retourneren geen JSON body bij succes, dat is ok
-            }
-            showMessage('✓ Data succesvol opgeslagen!', 'success');
-            loadDataAndRender();
-        } else {
-            // Probeer error message uit JSON response te halen
-            let errorMessage = `Onbekende serverfout (${response.status}) bij Opslaan.`;
-            try {
-                const err = await response.json();
-                if (err.message) {
-                    errorMessage = err.message;
-                }
-            } catch (e) {
-                // Response is geen JSON, gebruik generieke boodschap
-                errorMessage = `Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`;
-            }
-            throw new Error(errorMessage);
-        }
+        await handleApiResponse(response, 'Opslaan');
+        showMessage('✓ Data succesvol opgeslagen!', 'success');
+        loadDataAndRender();
     } catch (error) {
         showMessage(`❌ Fout bij opslaan: ${error.message}`, 'error');
         console.error('Opslagfout:', error);
@@ -295,30 +307,10 @@ async function updateDataToServer(id, userFieldName, passFieldName, domainFieldN
             body: JSON.stringify(userData)
         });
 
-        if (response.ok) {
-            // Probeer JSON te parsen, maar als het mislukt is dat geen probleem
-            try {
-                await response.json();
-            } catch (e) {
-                // Sommige servers retourneren geen JSON body bij succes, dat is ok
-            }
-            const passwordStatus = userData.Password.trim() === '' ? 'ongewijzigd' : 'opnieuw versleuteld';
-            showMessage(`✓ Data succesvol bijgewerkt (UPDATE). Wachtwoord is ${passwordStatus}.`, 'success');
-            loadDataAndRender();
-        } else {
-            // Probeer error message uit JSON response te halen
-            let errorMessage = `Onbekende serverfout (${response.status}) bij Bijwerken.`;
-            try {
-                const err = await response.json();
-                if (err.message) {
-                    errorMessage = err.message;
-                }
-            } catch (e) {
-                // Response is geen JSON, gebruik generieke boodschap
-                errorMessage = `Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`;
-            }
-            throw new Error(errorMessage);
-        }
+        await handleApiResponse(response, 'Bijwerken');
+        const passwordStatus = userData.Password.trim() === '' ? 'ongewijzigd' : 'opnieuw versleuteld';
+        showMessage(`✓ Data succesvol bijgewerkt (UPDATE). Wachtwoord is ${passwordStatus}.`, 'success');
+        loadDataAndRender();
     } catch (error) {
         showMessage(`❌ Fout bij bijwerken. Details: ${error.message}`, 'error');
         console.error('Bijwerkfout:', error);
