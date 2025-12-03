@@ -233,17 +233,24 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     })
         .then(response => {
             if (response.ok) {
-                showMessage('✓ Data succesvol opgeslagen!', 'success');
-                loadDataAndRender();
+                return response.json().then(() => {
+                    showMessage('✓ Data succesvol opgeslagen!', 'success');
+                    loadDataAndRender();
+                });
             } else {
-                // Verbeterde foutafhandeling voor niet-JSON antwoorden
+                // Probeer de error als JSON te parsen
                 return response.json()
                     .then(err => {
-                        // Gooi de foutmelding uit de JSON-body, of een algemene foutmelding als de body leeg is
+                        // Als JSON parsing succesvol is, gooi een error met de server's message
                         throw new Error(err.message || `Onbekende serverfout (${response.status}) bij Opslaan.`);
                     })
-                    .catch(() => {
-                        // Als de JSON-parsing mislukt (bijvoorbeeld bij een HTML-foutpagina), geef een algemene foutmelding
+                    .catch(jsonError => {
+                        // Als JSON parsing mislukt, check of het een Error object is (van de vorige .then)
+                        if (jsonError instanceof Error && jsonError.message && !jsonError.message.includes('JSON')) {
+                            // Dit is de error die we zelf hebben gegooid, gooi hem door
+                            throw jsonError;
+                        }
+                        // Anders is het een JSON parse error, geef een algemene foutmelding
                         throw new Error(`Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`);
                     });
             }
@@ -288,18 +295,25 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     })
         .then(response => {
             if (response.ok) {
-                const passwordStatus = userData.Password.trim() === '' ? 'ongewijzigd' : 'opnieuw versleuteld';
-                showMessage(`✓ Data succesvol bijgewerkt (UPDATE). Wachtwoord is ${passwordStatus}.`, 'success');
-                loadDataAndRender();
+                return response.json().then(() => {
+                    const passwordStatus = userData.Password.trim() === '' ? 'ongewijzigd' : 'opnieuw versleuteld';
+                    showMessage(`✓ Data succesvol bijgewerkt (UPDATE). Wachtwoord is ${passwordStatus}.`, 'success');
+                    loadDataAndRender();
+                });
             } else {
-                // Verbeterde foutafhandeling voor niet-JSON antwoorden
+                // Probeer de error als JSON te parsen
                 return response.json()
                     .then(err => {
-                        // Gooi de foutmelding uit de JSON-body, of een algemene foutmelding als de body leeg is
+                        // Als JSON parsing succesvol is, gooi een error met de server's message
                         throw new Error(err.message || `Onbekende serverfout (${response.status}) bij Bijwerken.`);
                     })
-                    .catch(() => {
-                        // Als de JSON-parsing mislukt (bijvoorbeeld bij een HTML-foutpagina), geef een algemene foutmelding
+                    .catch(jsonError => {
+                        // Als JSON parsing mislukt, check of het een Error object is (van de vorige .then)
+                        if (jsonError instanceof Error && jsonError.message && !jsonError.message.includes('JSON')) {
+                            // Dit is de error die we zelf hebben gegooid, gooi hem door
+                            throw jsonError;
+                        }
+                        // Anders is het een JSON parse error, geef een algemene foutmelding
                         throw new Error(`Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`);
                     });
             }
