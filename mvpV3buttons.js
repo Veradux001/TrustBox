@@ -206,17 +206,17 @@ function addNewGroup() {
  * Parseert JSON bij succes, extraheert error messages bij fouten.
  * @param {Response} response - De fetch response
  * @param {string} operation - Naam van de operatie voor foutmeldingen (bijv. "Opslaan", "Bijwerken")
- * @returns {Promise<void>}
+ * @returns {Promise<any>} - Parsed JSON data bij succes, of null als er geen JSON body is
  */
 async function handleApiResponse(response, operation) {
     if (response.ok) {
         // Probeer JSON te parsen, maar als het mislukt is dat geen probleem
         try {
-            await response.json();
+            return await response.json();
         } catch (e) {
             // Sommige servers retourneren geen JSON body bij succes, dat is ok
+            return null;
         }
-        return;
     } else {
         // Probeer error message uit JSON response te halen
         let errorMessage = `Onbekende serverfout (${response.status}) bij ${operation}.`;
@@ -226,8 +226,14 @@ async function handleApiResponse(response, operation) {
                 errorMessage = err.message;
             }
         } catch (e) {
-            // Response is geen JSON, gebruik generieke boodschap
-            errorMessage = `Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`;
+            // Response is geen JSON (bijv. HTML foutpagina)
+            if (response.status >= 500) {
+                errorMessage = `Serverfout ${response.status}: Kon response niet verwerken. Controleer of de server correct draait.`;
+            } else if (response.status >= 400) {
+                errorMessage = `Clientfout ${response.status}: Verzoek kon niet worden verwerkt.`;
+            } else {
+                errorMessage = `Onverwachte fout (${response.status}): Kon response niet verwerken.`;
+            }
         }
         throw new Error(errorMessage);
     }
@@ -267,9 +273,13 @@ async function saveDataToServer(id, userFieldName, passFieldName, domainFieldNam
 
         await handleApiResponse(response, 'Opslaan');
         showMessage('✓ Data succesvol opgeslagen!', 'success');
-        loadDataAndRender();
+        await loadDataAndRender();
     } catch (error) {
-        showMessage(`❌ Fout bij opslaan: ${error.message}`, 'error');
+        // Network error vs server error
+        const errorMsg = error instanceof TypeError && error.message.toLowerCase().includes('fetch')
+            ? `❌ Fout bij opslaan: Kan geen verbinding maken met de server. Controleer of de server draait.`
+            : `❌ Fout bij opslaan: ${error.message}`;
+        showMessage(errorMsg, 'error');
         console.error('Opslagfout:', error);
     }
 }
@@ -310,9 +320,13 @@ async function updateDataToServer(id, userFieldName, passFieldName, domainFieldN
         await handleApiResponse(response, 'Bijwerken');
         const passwordStatus = userData.Password.trim() === '' ? 'ongewijzigd' : 'opnieuw versleuteld';
         showMessage(`✓ Data succesvol bijgewerkt (UPDATE). Wachtwoord is ${passwordStatus}.`, 'success');
-        loadDataAndRender();
+        await loadDataAndRender();
     } catch (error) {
-        showMessage(`❌ Fout bij bijwerken. Details: ${error.message}`, 'error');
+        // Network error vs server error
+        const errorMsg = error instanceof TypeError && error.message.toLowerCase().includes('fetch')
+            ? `❌ Fout bij bijwerken: Kan geen verbinding maken met de server. Controleer of de server draait.`
+            : `❌ Fout bij bijwerken. Details: ${error.message}`;
+        showMessage(errorMsg, 'error');
         console.error('Bijwerkfout:', error);
     }
 }
