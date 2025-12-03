@@ -234,8 +234,19 @@ router.post('/saveData', async (req, res) => {
         const validatedUsername = validateStringLength(Username, 'Username', 255);
         const validatedDomain = validateStringLength(Domain, 'Domain', 255);
 
+        // Valideer dat Password een string is
+        if (typeof Password !== 'string' || Password.trim() === '') {
+            return res.status(400).json({ message: 'Wachtwoord moet een niet-lege string zijn.' });
+        }
+
         // 🔒 VERSLEUTEL het wachtwoord voordat het wordt opgeslagen
-        const encryptedPassword = encrypt(Password);
+        let encryptedPassword;
+        try {
+            encryptedPassword = encrypt(Password);
+        } catch (encryptError) {
+            console.error("Encryptie fout bij opslag:", encryptError.message);
+            return res.status(500).json({ message: 'Fout bij het versleutelen van het wachtwoord.' });
+        }
 
         const insertQuery = `
             INSERT INTO FormSubmission (GroupId, Username, Password, Domain)
@@ -252,7 +263,8 @@ router.post('/saveData', async (req, res) => {
         res.status(201).json({ message: `Data voor Groep ${validatedGroupId} succesvol opgeslagen (INSERT) en Wachtwoord versleuteld.` });
     } catch (err) {
         console.error("SQL Fout bij opslag: ", err.message);
-        res.status(500).json({ message: 'Fout bij het opslaan van data op de server.' });
+        console.error("Volledige fout:", err);
+        res.status(500).json({ message: `Fout bij het opslaan van data op de server: ${err.message}` });
     }
 });
 
@@ -276,20 +288,31 @@ router.put('/data/:groupId', async (req, res) => {
         const validatedUsername = validateStringLength(Username, 'Username', 255);
         const validatedDomain = validateStringLength(Domain, 'Domain', 255);
         if (Password && Password.trim() !== "") {
+            // Valideer dat Password een string is
+            if (typeof Password !== 'string') {
+                return res.status(400).json({ message: 'Wachtwoord moet een string zijn.' });
+            }
+
             // Als er een NIEUW wachtwoord is ingevoerd, VERSLEUTEL het
-            encryptedPassword = encrypt(Password);
+            try {
+                encryptedPassword = encrypt(Password);
+            } catch (encryptError) {
+                console.error("Encryptie fout bij update:", encryptError.message);
+                return res.status(500).json({ message: 'Fout bij het versleutelen van het wachtwoord.' });
+            }
+
             updateQuery = `
-                UPDATE FormSubmission 
-                SET Username = @Username, 
-                    Password = @EncryptedPassword, 
+                UPDATE FormSubmission
+                SET Username = @Username,
+                    Password = @EncryptedPassword,
                     Domain = @Domain
                 WHERE GroupId = @GroupId;
             `;
         } else {
             // Als het wachtwoordveld leeg is, BEHOUDEN we het OUDE versleutelde wachtwoord.
             updateQuery = `
-                UPDATE FormSubmission 
-                SET Username = @Username, 
+                UPDATE FormSubmission
+                SET Username = @Username,
                     Domain = @Domain
                 WHERE GroupId = @GroupId;
             `;
@@ -313,7 +336,8 @@ router.put('/data/:groupId', async (req, res) => {
         res.status(200).json({ message: `Data voor Groep ${validatedGroupId} succesvol bijgewerkt (UPDATE).` });
     } catch (err) {
         console.error("SQL Fout bij update: ", err.message);
-        res.status(500).json({ message: 'Fout bij het bijwerken van data op de server.' });
+        console.error("Volledige fout:", err);
+        res.status(500).json({ message: `Fout bij het bijwerken van data op de server: ${err.message}` });
     }
 });
 
