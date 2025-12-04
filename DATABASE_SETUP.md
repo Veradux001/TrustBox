@@ -140,13 +140,15 @@ GO
 
 -- Create FormSubmission table
 CREATE TABLE FormSubmission (
-    GroupId INT PRIMARY KEY,
+    GroupId INT NOT NULL,
     UserId INT NOT NULL,
     Username NVARCHAR(255) NOT NULL,
     Password NVARCHAR(MAX) NOT NULL,
     Domain NVARCHAR(255) NOT NULL,
     CreatedAt DATETIME2 DEFAULT GETDATE(),
-    LastModified DATETIME2 DEFAULT GETDATE()
+    LastModified DATETIME2 DEFAULT GETDATE(),
+    -- Composite primary key to allow different users to have the same GroupId values
+    CONSTRAINT PK_FormSubmission_GroupId_UserId PRIMARY KEY (GroupId, UserId)
 );
 GO
 
@@ -171,8 +173,8 @@ GO
 ```
 
 **Column Descriptions:**
-- `GroupId` - User-defined unique identifier
-- `UserId` - Foreign key linking to UserRegistrationDB (enforced at application level)
+- `GroupId` - User-defined identifier (unique per user, part of composite primary key)
+- `UserId` - Foreign key linking to UserRegistrationDB (enforced at application level, part of composite primary key)
 - `Username` - Stored username for the service
 - `Password` - **AES-256 encrypted** password (not plaintext!)
 - `Domain` - Service/website domain (e.g., "gmail.com")
@@ -182,6 +184,7 @@ GO
 **Important Security Notes:**
 - The `Password` column stores **encrypted** passwords using AES-256-CBC encryption
 - The `UserId` column provides user isolation (users can only see their own data)
+- The composite primary key `(GroupId, UserId)` ensures each user can have their own set of GroupId values (1, 2, 3...) without conflicts
 - Cross-database foreign keys are not supported in SQL Server, so referential integrity is enforced at the application level
 
 ### Optional: Data Validation Trigger
@@ -903,6 +906,26 @@ SELECT name, type_desc, create_date FROM sys.server_principals WHERE type IN ('S
 -- List all database users
 SELECT name, type_desc, create_date FROM sys.database_principals WHERE type IN ('S', 'U');
 ```
+
+---
+
+## Database Migrations
+
+If you already have an existing TrustBox database installation, you may need to apply migrations to update the schema.
+
+### Applying Migration 001: Fix Primary Key
+
+**Issue:** If users other than the first user receive "PRIMARY KEY constraint violation" errors when saving data, you need to apply migration 001.
+
+**To apply:**
+
+```bash
+# Using sqlcmd
+cd /path/to/TrustBox
+sqlcmd -S localhost -U sa -P 'YourPassword' -i migrations/001_fix_formsubmission_primary_key.sql -C
+```
+
+See the [migrations/README.md](migrations/README.md) file for detailed migration instructions.
 
 ---
 
