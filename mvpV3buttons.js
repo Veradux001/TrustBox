@@ -202,9 +202,47 @@ function addNewGroup() {
 // --- 4. FUNCTIONALITEIT: DATA OPSLAAN (POST - INSERT) ---
 
 /**
+ * Gemeenschappelijke functie voor het afhandelen van API-responses.
+ * Parseert JSON bij succes, extraheert error messages bij fouten.
+ * @param {Response} response - De fetch response
+ * @param {string} operation - Naam van de operatie voor foutmeldingen (bijv. "Opslaan", "Bijwerken")
+ * @returns {Promise<any>} - Parsed JSON data bij succes, of null als er geen JSON body is
+ */
+async function handleApiResponse(response, operation) {
+    if (response.ok) {
+        // Probeer JSON te parsen, maar als het mislukt is dat geen probleem
+        try {
+            return await response.json();
+        } catch (e) {
+            // Sommige servers retourneren geen JSON body bij succes, dat is ok
+            return null;
+        }
+    } else {
+        // Probeer error message uit JSON response te halen
+        let errorMessage = `Onbekende serverfout (${response.status}) bij ${operation}.`;
+        try {
+            const err = await response.json();
+            if (err.message) {
+                errorMessage = err.message;
+            }
+        } catch (e) {
+            // Response is geen JSON (bijv. HTML foutpagina)
+            if (response.status >= 500) {
+                errorMessage = `Serverfout ${response.status}: Kon response niet verwerken. Controleer of de server correct draait.`;
+            } else if (response.status >= 400) {
+                errorMessage = `Clientfout ${response.status}: Verzoek kon niet worden verwerkt.`;
+            } else {
+                errorMessage = `Onverwachte fout (${response.status}): Kon response niet verwerken.`;
+            }
+        }
+        throw new Error(errorMessage);
+    }
+}
+
+/**
  * Stuurt de data van een specifieke groep via POST naar de Node.js server (INSERT).
  */
-function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
+async function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     const groupContainer = document.getElementById(`input-container-${id}`);
 
     if (!groupContainer) {
@@ -224,35 +262,26 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
         return;
     }
 
-    fetch(`${API_BASE_URL}/saveData`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-    })
-        .then(response => {
-            if (response.ok) {
-                showMessage('✓ Data succesvol opgeslagen!', 'success');
-                loadDataAndRender();
-            } else {
-                // Verbeterde foutafhandeling voor niet-JSON antwoorden
-                return response.json()
-                    .then(err => {
-                        // Gooi de foutmelding uit de JSON-body, of een algemene foutmelding als de body leeg is
-                        throw new Error(err.message || `Onbekende serverfout (${response.status}) bij Opslaan.`);
-                    })
-                    .catch(() => {
-                        // Als de JSON-parsing mislukt (bijvoorbeeld bij een HTML-foutpagina), geef een algemene foutmelding
-                        throw new Error(`Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`);
-                    });
-            }
-        })
-        .catch(error => {
-            // Vereenvoudigde, robuustere foutmelding
-            showMessage(`❌ Fout bij opslaan: ${error.message}`, 'error');
-            console.error('Opslagfout:', error);
+    try {
+        const response = await fetch(`${API_BASE_URL}/saveData`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(userData),
         });
+
+        await handleApiResponse(response, 'Opslaan');
+        showMessage('✓ Data succesvol opgeslagen!', 'success');
+        await loadDataAndRender();
+    } catch (error) {
+        // Network error vs server error
+        const errorMsg = error instanceof TypeError && error.message.toLowerCase().includes('fetch')
+            ? `❌ Fout bij opslaan: Kan geen verbinding maken met de server. Controleer of de server draait.`
+            : `❌ Fout bij opslaan: ${error.message}`;
+        showMessage(errorMsg, 'error');
+        console.error('Opslagfout:', error);
+    }
 }
 
 // --- 5. FUNCTIONALITEIT: DATA BIJWERKEN (PUT - UPDATE) ---
@@ -260,7 +289,7 @@ function saveDataToServer(id, userFieldName, passFieldName, domainFieldName) {
 /**
  * Stuurt de data van een specifieke groep via PUT naar de Node.js server (UPDATE).
  */
-function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
+async function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
     const groupContainer = document.getElementById(`input-container-${id}`);
 
     if (!groupContainer) {
@@ -279,36 +308,27 @@ function updateDataToServer(id, userFieldName, passFieldName, domainFieldName) {
         return;
     }
 
-    fetch(`${API_BASE_URL}/data/${id}`, {
-        method: 'PUT', // PUT voor UPDATE
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(userData)
-    })
-        .then(response => {
-            if (response.ok) {
-                const passwordStatus = userData.Password.trim() === '' ? 'ongewijzigd' : 'opnieuw versleuteld';
-                showMessage(`✓ Data succesvol bijgewerkt (UPDATE). Wachtwoord is ${passwordStatus}.`, 'success');
-                loadDataAndRender();
-            } else {
-                // Verbeterde foutafhandeling voor niet-JSON antwoorden
-                return response.json()
-                    .then(err => {
-                        // Gooi de foutmelding uit de JSON-body, of een algemene foutmelding als de body leeg is
-                        throw new Error(err.message || `Onbekende serverfout (${response.status}) bij Bijwerken.`);
-                    })
-                    .catch(() => {
-                        // Als de JSON-parsing mislukt (bijvoorbeeld bij een HTML-foutpagina), geef een algemene foutmelding
-                        throw new Error(`Serverfout: Kon response niet verwerken (Status: ${response.status}). Controleer of de Node.js server draait.`);
-                    });
-            }
-        })
-        .catch(error => {
-            // Vereenvoudigde, robuustere foutmelding
-            showMessage(`❌ Fout bij bijwerken. Details: ${error.message}`, 'error');
-            console.error('Bijwerkfout:', error);
+    try {
+        const response = await fetch(`${API_BASE_URL}/data/${id}`, {
+            method: 'PUT', // PUT voor UPDATE
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userData)
         });
+
+        await handleApiResponse(response, 'Bijwerken');
+        const passwordStatus = userData.Password.trim() === '' ? 'ongewijzigd' : 'opnieuw versleuteld';
+        showMessage(`✓ Data succesvol bijgewerkt (UPDATE). Wachtwoord is ${passwordStatus}.`, 'success');
+        await loadDataAndRender();
+    } catch (error) {
+        // Network error vs server error
+        const errorMsg = error instanceof TypeError && error.message.toLowerCase().includes('fetch')
+            ? `❌ Fout bij bijwerken: Kan geen verbinding maken met de server. Controleer of de server draait.`
+            : `❌ Fout bij bijwerken. Details: ${error.message}`;
+        showMessage(errorMsg, 'error');
+        console.error('Bijwerkfout:', error);
+    }
 }
 
 // --- 6. FUNCTIONALITEIT: DATA VERWIJDEREN (DELETE) ---
