@@ -16,7 +16,7 @@ Database migrations are versioned SQL scripts that modify the database schema or
 The `FormSubmission` table had `GroupId` as the sole PRIMARY KEY. This prevented different users from using the same `GroupId` values, causing primary key constraint violations when a second user tried to save data with `GroupId=1`.
 
 **Solution:**
-Changed the PRIMARY KEY to a composite key `(GroupId, UserId)` to allow user isolation while maintaining unique GroupIds per user.
+Changed the PRIMARY KEY to a composite key `(UserId, GroupId)` to allow user isolation while maintaining unique GroupIds per user. Column order is optimized for query performance.
 
 **Impact:**
 - Preserves all existing data
@@ -74,8 +74,8 @@ GO
 **Expected output after migration 001:**
 ```
 IndexName                               IndexType    ColumnName  KeyOrder
-PK_FormSubmission_GroupId_UserId        CLUSTERED    GroupId     1
-PK_FormSubmission_GroupId_UserId        CLUSTERED    UserId      2
+PK_FormSubmission_UserId_GroupId        CLUSTERED    UserId      1
+PK_FormSubmission_UserId_GroupId        CLUSTERED    GroupId     2
 ```
 
 ## Best Practices
@@ -95,6 +95,23 @@ PK_FormSubmission_GroupId_UserId        CLUSTERED    UserId      2
 
 5. **Review the migration script before executing** to understand what changes will be made
 
+## Migration Status Tracking
+
+The migration script automatically creates a `schema_migrations` table to track which migrations have been applied:
+
+```sql
+-- Check which migrations have been applied
+USE FormSubmissionDB;
+GO
+
+SELECT version, description, applied_at
+FROM schema_migrations
+ORDER BY version;
+GO
+```
+
+This prevents accidental re-runs of migrations and provides an audit trail of schema changes.
+
 ## Rollback
 
 If you need to rollback migration 001, you can restore the original primary key:
@@ -103,14 +120,24 @@ If you need to rollback migration 001, you can restore the original primary key:
 USE FormSubmissionDB;
 GO
 
+BEGIN TRANSACTION;
+GO
+
 -- Drop the composite primary key
 ALTER TABLE FormSubmission
-DROP CONSTRAINT PK_FormSubmission_GroupId_UserId;
+DROP CONSTRAINT PK_FormSubmission_UserId_GroupId;
 GO
 
 -- Restore the original primary key (WARNING: This may fail if multiple users have the same GroupId)
 ALTER TABLE FormSubmission
 ADD CONSTRAINT PK_FormSubmission_GroupId PRIMARY KEY (GroupId);
+GO
+
+-- Remove migration record
+DELETE FROM schema_migrations WHERE version = 1;
+GO
+
+COMMIT TRANSACTION;
 GO
 ```
 

@@ -140,23 +140,20 @@ GO
 
 -- Create FormSubmission table
 CREATE TABLE FormSubmission (
-    GroupId INT NOT NULL,
     UserId INT NOT NULL,
+    GroupId INT NOT NULL,
     Username NVARCHAR(255) NOT NULL,
     Password NVARCHAR(MAX) NOT NULL,
     Domain NVARCHAR(255) NOT NULL,
     CreatedAt DATETIME2 DEFAULT GETDATE(),
     LastModified DATETIME2 DEFAULT GETDATE(),
     -- Composite primary key to allow different users to have the same GroupId values
-    CONSTRAINT PK_FormSubmission_GroupId_UserId PRIMARY KEY (GroupId, UserId)
+    -- Column order (UserId, GroupId) optimized for query performance (all queries filter by UserId first)
+    CONSTRAINT PK_FormSubmission_UserId_GroupId PRIMARY KEY (UserId, GroupId)
 );
 GO
 
--- Create indexes for performance
--- Note: The composite index on (UserId, GroupId) can also serve queries filtering by UserId alone
-CREATE INDEX IDX_FormSubmission_UserId_GroupId ON FormSubmission(UserId, GroupId);
-GO
-
+-- Create index for domain-based lookups
 CREATE INDEX IDX_FormSubmission_Domain ON FormSubmission(Domain);
 GO
 
@@ -173,8 +170,8 @@ GO
 ```
 
 **Column Descriptions:**
-- `GroupId` - User-defined identifier (unique per user, part of composite primary key)
-- `UserId` - Foreign key linking to UserRegistrationDB (enforced at application level, part of composite primary key)
+- `UserId` - Foreign key linking to UserRegistrationDB (enforced at application level, first part of composite primary key)
+- `GroupId` - User-defined identifier (unique per user within their own data set, second part of composite primary key)
 - `Username` - Stored username for the service
 - `Password` - **AES-256 encrypted** password (not plaintext!)
 - `Domain` - Service/website domain (e.g., "gmail.com")
@@ -184,7 +181,8 @@ GO
 **Important Security Notes:**
 - The `Password` column stores **encrypted** passwords using AES-256-CBC encryption
 - The `UserId` column provides user isolation (users can only see their own data)
-- The composite primary key `(GroupId, UserId)` ensures each user can have their own set of GroupId values (1, 2, 3...) without conflicts
+- The composite primary key `(UserId, GroupId)` ensures each user can have their own set of GroupId values (1, 2, 3...) without conflicts
+- The primary key column order is optimized for query performance (all queries filter by UserId first)
 - Cross-database foreign keys are not supported in SQL Server, so referential integrity is enforced at the application level
 
 ### Optional: Data Validation Trigger

@@ -5,7 +5,7 @@
 -- Problem: GroupId is currently the sole PRIMARY KEY, which prevents different users
 --          from using the same GroupId values (e.g., both User 1 and User 2 want GroupId=1)
 --
--- Solution: Change the PRIMARY KEY to a composite key (GroupId, UserId) to allow
+-- Solution: Change the PRIMARY KEY to a composite key (UserId, GroupId) to allow
 --           user isolation while maintaining unique GroupIds per user
 --
 -- IMPORTANT: This migration will preserve all existing data
@@ -17,6 +17,10 @@
 USE FormSubmissionDB;
 GO
 
+-- Start transaction to ensure atomicity
+BEGIN TRANSACTION;
+GO
+
 PRINT 'Starting migration: Fix FormSubmission Primary Key...';
 GO
 
@@ -24,11 +28,34 @@ GO
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'FormSubmission')
 BEGIN
     PRINT 'ERROR: FormSubmission table does not exist. Please run DATABASE_SETUP.md first.';
+    ROLLBACK TRANSACTION;
     THROW 50000, 'FormSubmission table does not exist', 1;
 END
 GO
 
--- Step 2: Drop the existing primary key constraint
+-- Step 2: Create schema_migrations table if it doesn't exist
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'schema_migrations')
+BEGIN
+    PRINT 'Creating schema_migrations table for tracking applied migrations...';
+    CREATE TABLE schema_migrations (
+        version INT PRIMARY KEY,
+        description NVARCHAR(255) NOT NULL,
+        applied_at DATETIME2 DEFAULT GETDATE()
+    );
+    PRINT 'schema_migrations table created successfully.';
+END
+GO
+
+-- Step 3: Check if this migration has already been applied
+IF EXISTS (SELECT 1 FROM schema_migrations WHERE version = 1)
+BEGIN
+    PRINT 'WARNING: Migration 001 has already been applied. Skipping...';
+    ROLLBACK TRANSACTION;
+    RETURN;
+END
+GO
+
+-- Step 4: Drop the existing primary key constraint
 DECLARE @constraintName NVARCHAR(200);
 SELECT @constraintName = name
 FROM sys.key_constraints
@@ -49,16 +76,22 @@ BEGIN
 END
 GO
 
--- Step 3: Create the new composite primary key
+-- Step 5: Create the new composite primary key (UserId, GroupId)
+-- Order optimized for query performance: all queries filter by UserId first
 ALTER TABLE FormSubmission
-ADD CONSTRAINT PK_FormSubmission_GroupId_UserId
-PRIMARY KEY (GroupId, UserId);
+ADD CONSTRAINT PK_FormSubmission_UserId_GroupId
+PRIMARY KEY (UserId, GroupId);
 GO
 
-PRINT 'New composite primary key (GroupId, UserId) created successfully.';
+PRINT 'New composite primary key (UserId, GroupId) created successfully.';
 GO
 
--- Step 4: Verify the new primary key
+-- Step 6: Record the migration in schema_migrations
+INSERT INTO schema_migrations (version, description)
+VALUES (1, 'Fix FormSubmission primary key to composite (UserId, GroupId)');
+GO
+
+-- Step 7: Verify the new primary key
 SELECT
     i.name AS IndexName,
     i.type_desc AS IndexType,
@@ -71,12 +104,38 @@ WHERE i.object_id = OBJECT_ID('FormSubmission')
 ORDER BY ic.key_ordinal;
 GO
 
+-- Step 8: Verify the migration was recorded
+SELECT version, description, applied_at
+FROM schema_migrations
+WHERE version = 1;
+GO
+
+-- Step 9: Final verification - ensure new primary key exists
+IF NOT EXISTS (
+    SELECT 1 FROM sys.key_constraints
+    WHERE name = 'PK_FormSubmission_UserId_GroupId'
+    AND type = 'PK'
+)
+BEGIN
+    PRINT 'ERROR: Migration failed - New primary key was not created';
+    ROLLBACK TRANSACTION;
+    THROW 50001, 'Migration failed: New primary key was not created', 1;
+END
+GO
+
+-- Commit the transaction
+COMMIT TRANSACTION;
+GO
+
 PRINT 'Migration completed successfully!';
 PRINT '';
 PRINT 'Summary:';
 PRINT '  - Old PRIMARY KEY: GroupId';
-PRINT '  - New PRIMARY KEY: (GroupId, UserId)';
+PRINT '  - New PRIMARY KEY: (UserId, GroupId)';
+PRINT '  - Migration version 1 recorded in schema_migrations table';
 PRINT '';
 PRINT 'Users can now use the same GroupId values without conflicts.';
 PRINT 'Each user has their own isolated set of GroupIds.';
+PRINT '';
+PRINT 'Performance optimization: PK order (UserId, GroupId) matches query patterns.';
 GO
