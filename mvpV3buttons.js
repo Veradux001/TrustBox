@@ -69,6 +69,30 @@ function createMessageContainer() {
 // --- 1. FUNCTIONALITEIT: DATA OPHALEN EN WEERGEVEN ---
 
 /**
+ * Haalt de huidige gebruiker op uit localStorage
+ */
+function getCurrentUser() {
+    const userData = localStorage.getItem('trustbox_user');
+    if (!userData) {
+        showMessage('Je bent niet ingelogd. Doorverwijzen naar login...', 'error');
+        setTimeout(() => {
+            window.location.href = 'loginV3.html';
+        }, 2000);
+        throw new Error('No user session'); // Prevent further execution
+    }
+    try {
+        return JSON.parse(userData);
+    } catch (e) {
+        console.error('Fout bij het parsen van gebruikersgegevens:', e);
+        showMessage('Ongeldige sessie. Log opnieuw in.', 'error');
+        setTimeout(() => {
+            window.location.href = 'loginV3.html';
+        }, 2000);
+        throw new Error('Invalid user session'); // Prevent further execution
+    }
+}
+
+/**
  * Laadt data van de server, inclusief ontsleutelde wachtwoorden, en toont de formuliergroepen.
  */
 async function loadDataAndRender() {
@@ -80,8 +104,17 @@ async function loadDataAndRender() {
     groupCount = 0;
     fieldCount = 0;
 
+    // 🔒 SECURITY FIX: Haal UserId op
+    const user = getCurrentUser();
+    if (!user) return;
+
     try {
-        const response = await fetch(`${API_BASE_URL}/getData`);
+        const response = await fetch(`${API_BASE_URL}/getData`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-id': user.userId.toString()
+            }
+        });
         if (!response.ok) {
             throw new Error('Kon data niet ophalen van de server.');
         }
@@ -250,6 +283,10 @@ async function saveDataToServer(id, userFieldName, passFieldName, domainFieldNam
         return;
     }
 
+    // 🔒 SECURITY FIX: Haal UserId op
+    const user = getCurrentUser();
+    if (!user) return;
+
     const userData = {
         GroupId: id,
         Username: groupContainer.querySelector(`input[name="${userFieldName}"]`).value,
@@ -267,6 +304,7 @@ async function saveDataToServer(id, userFieldName, passFieldName, domainFieldNam
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'x-user-id': user.userId.toString()
             },
             body: JSON.stringify(userData),
         });
@@ -297,6 +335,10 @@ async function updateDataToServer(id, userFieldName, passFieldName, domainFieldN
         return;
     }
 
+    // 🔒 SECURITY FIX: Haal UserId op
+    const user = getCurrentUser();
+    if (!user) return;
+
     const userData = {
         Username: groupContainer.querySelector(`input[name="${userFieldName}"]`).value,
         Password: groupContainer.querySelector(`input[name="${passFieldName}"]`).value, // Wordt versleuteld op de server als het niet leeg is
@@ -312,7 +354,8 @@ async function updateDataToServer(id, userFieldName, passFieldName, domainFieldN
         const response = await fetch(`${API_BASE_URL}/data/${id}`, {
             method: 'PUT', // PUT voor UPDATE
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-user-id': user.userId.toString()
             },
             body: JSON.stringify(userData)
         });
@@ -337,10 +380,15 @@ async function updateDataToServer(id, userFieldName, passFieldName, domainFieldN
  * Stuurt een DELETE verzoek naar de Node.js server.
  */
 function deleteDataFromServer(groupId) {
+    // 🔒 SECURITY FIX: Haal UserId op
+    const user = getCurrentUser();
+    if (!user) return Promise.reject(new Error('Geen gebruiker gevonden'));
+
     return fetch(`${API_BASE_URL}/data/${groupId}`, {
         method: 'DELETE',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'x-user-id': user.userId.toString()
         }
     })
         .then(response => {

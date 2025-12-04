@@ -145,14 +145,37 @@ Cannot insert the value NULL into column ...
 **What it means:** The database table structure doesn't match what the code expects.
 
 **Fix:**
-Ensure your `FormSubmission` table has these columns:
+Ensure your `FormSubmission` table has these columns (including the new `UserId` column for security):
 ```sql
 CREATE TABLE FormSubmission (
     GroupId INT PRIMARY KEY,
+    UserId INT NOT NULL,
     Username NVARCHAR(255) NOT NULL,
     Password NVARCHAR(MAX) NOT NULL,
-    Domain NVARCHAR(255) NOT NULL
+    Domain NVARCHAR(255) NOT NULL,
+    FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId)
 );
+```
+
+If you're upgrading from an older version without `UserId`:
+```sql
+-- Stap 1: Voeg UserId kolom toe als nullable
+ALTER TABLE FormSubmission ADD UserId INT NULL;
+
+-- Stap 2: Update bestaande records met een geldige UserId
+-- BELANGRIJK: Pas deze query aan voor jouw situatie
+UPDATE FormSubmission SET UserId = 1 WHERE UserId IS NULL;
+
+-- Stap 3: Maak kolom NOT NULL nadat alle records zijn bijgewerkt
+ALTER TABLE FormSubmission ALTER COLUMN UserId INT NOT NULL;
+
+-- Stap 4: Voeg foreign key constraint toe
+ALTER TABLE FormSubmission
+ADD CONSTRAINT FK_FormSubmission_User
+FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId);
+
+-- Stap 5: Voeg database index toe voor betere query performance
+CREATE INDEX IDX_FormSubmission_UserId ON FormSubmission(UserId);
 ```
 
 ### Quick Checklist
