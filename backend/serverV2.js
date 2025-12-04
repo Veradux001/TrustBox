@@ -6,9 +6,64 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
+const winston = require('winston');
+const rfs = require('rotating-file-stream');
 const app = express();
 const router = express.Router();
 const port = process.env.PORT || 3000;
+
+// --- Logging Setup with Winston ---
+// Create logs directory if it doesn't exist
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Configure Winston logger with rotating file streams
+const logger = winston.createLogger({
+    level: process.env.LOG_LEVEL || 'info',
+    format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.errors({ stack: true }),
+        winston.format.printf(({ timestamp, level, message, stack }) => {
+            return `[${timestamp}] ${level.toUpperCase()}: ${stack || message}`;
+        })
+    ),
+    transports: [
+        // Console output
+        new winston.transports.Console({
+            format: winston.format.combine(
+                winston.format.colorize(),
+                winston.format.printf(({ timestamp, level, message }) => {
+                    return `[${timestamp}] ${level}: ${message}`;
+                })
+            )
+        }),
+        // Regular log file with rotation
+        new winston.transports.File({
+            filename: path.join(logsDir, 'server.log'),
+            maxsize: 10485760, // 10MB
+            maxFiles: 7, // Keep 7 days of logs
+            tailable: true
+        }),
+        // Error log file with rotation
+        new winston.transports.File({
+            filename: path.join(logsDir, 'error.log'),
+            level: 'error',
+            maxsize: 10485760, // 10MB
+            maxFiles: 7, // Keep 7 days of logs
+            tailable: true
+        })
+    ]
+});
+
+// Override console methods to use Winston
+console.log = (...args) => logger.info(args.join(' '));
+console.error = (...args) => logger.error(args.join(' '));
+console.warn = (...args) => logger.warn(args.join(' '));
+console.info = (...args) => logger.info(args.join(' '));
+console.debug = (...args) => logger.debug(args.join(' '));
 
 // --- Validatie Constanten ---
 const USERNAME_MIN_LENGTH = 3;

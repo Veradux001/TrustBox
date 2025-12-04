@@ -28,7 +28,9 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
-    "mssql": "^12.1.1"
+    "mssql": "^12.1.1",
+    "rotating-file-stream": "^3.2.5",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
