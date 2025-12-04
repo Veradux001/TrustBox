@@ -6,9 +6,43 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
 const app = express();
 const router = express.Router();
 const port = process.env.PORT || 3000;
+
+// --- Logging Setup ---
+const logFile = path.join(__dirname, 'server.log');
+const errorLogFile = path.join(__dirname, 'error.log');
+
+function logToFile(message, isError = false) {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] ${message}\n`;
+    const targetFile = isError ? errorLogFile : logFile;
+
+    try {
+        fs.appendFileSync(targetFile, logMessage);
+    } catch (err) {
+        // Als logging faalt, print naar console
+        console.error('Logging fout:', err.message);
+    }
+}
+
+// Override console.log en console.error om naar file te schrijven
+const originalLog = console.log;
+const originalError = console.error;
+
+console.log = function(...args) {
+    const message = args.join(' ');
+    logToFile(message, false);
+    originalLog.apply(console, args);
+};
+
+console.error = function(...args) {
+    const message = args.join(' ');
+    logToFile(message, true);
+    originalError.apply(console, args);
+};
 
 // --- Validatie Constanten ---
 const USERNAME_MIN_LENGTH = 3;
