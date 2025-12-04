@@ -169,10 +169,27 @@ const registerConfig = {
 // --- 2. Middleware Instellen ---
 app.use(express.json({ limit: '1mb' })); // Nodig voor JSON data van fetch()
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
 // BEVEILIGING: Beperk CORS tot specifieke origins
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : ['http://localhost:3000'];
+
+console.log('CORS toegestane origins:', allowedOrigins);
+
 app.use(cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+        // Sta requests zonder origin toe (bijv. mobiele apps, Postman)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.error(`CORS geblokkeerd voor origin: ${origin}`);
+            console.error(`Toegestane origins zijn: ${allowedOrigins.join(', ')}`);
+            callback(new Error(`Origin ${origin} is niet toegestaan door CORS. Voeg het toe aan ALLOWED_ORIGINS in .env`));
+        }
+    },
     credentials: true
 }));
 
@@ -243,7 +260,10 @@ router.get('/getData', async (req, res) => {
 router.post('/saveData', async (req, res) => {
     const { GroupId, Username, Password, Domain } = req.body;
 
-    if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
+    if (!pool) {
+        console.error("Database pool is niet beschikbaar bij saveData request");
+        return res.status(503).json({ message: 'Database niet beschikbaar. Neem contact op met de beheerder.' });
+    }
 
     if (!GroupId || !Username || !Password || !Domain) {
         return res.status(400).json({ message: 'Alle velden zijn verplicht.' });
@@ -265,7 +285,7 @@ router.post('/saveData', async (req, res) => {
         } catch (encryptError) {
             console.error("Encryptie fout bij opslag:", encryptError.message);
             console.error("Volledige encryptie fout:", encryptError);
-            return res.status(500).json({ message: 'Fout bij het versleutelen van het wachtwoord.' });
+            return res.status(500).json({ message: 'Fout bij het versleutelen van het wachtwoord. Controleer de ENCRYPTION_KEY configuratie.' });
         }
 
         const insertQuery = `
@@ -283,7 +303,23 @@ router.post('/saveData', async (req, res) => {
         res.status(201).json({ message: `Data voor Groep ${validatedGroupId} succesvol opgeslagen (INSERT) en Wachtwoord versleuteld.` });
     } catch (err) {
         console.error("SQL Fout bij opslag:", err.message);
+        console.error("Fout type:", err.name);
+        console.error("Fout code:", err.code);
         console.error("Volledige fout:", err);
+
+        // Geef meer specifieke foutmeldingen
+        if (err.name === 'ValidationError' || err.message.includes('moet') || err.message.includes('overschrijdt')) {
+            return res.status(400).json({ message: err.message });
+        }
+
+        if (err.number === 2627 || err.number === 2601) {
+            return res.status(409).json({ message: 'Er bestaat al een record met dit GroupId. Gebruik de Bijwerken knop of kies een ander GroupId.' });
+        }
+
+        if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEOUT') {
+            return res.status(503).json({ message: 'Kan geen verbinding maken met de database. Neem contact op met de beheerder.' });
+        }
+
         res.status(500).json({ message: 'Fout bij het opslaan van data op de server. Neem contact op met de beheerder.' });
     }
 });
