@@ -430,5 +430,8 @@ function removeGroupContent(id) {
         });
 }
 
-// De initiële laadfunctie wordt uitgevoerd bij het laden van het script.
-loadDataAndRender();
+// De initiële laadfunctie wordt uitgevoerd wanneer de DOM volledig is geladen.
+// Dit zorgt ervoor dat alle elementen beschikbaar zijn voordat we proberen data te laden.
+document.addEventListener('DOMContentLoaded', function() {
+    loadDataAndRender();
+});
