@@ -39,6 +39,7 @@
 - [Technologie Stack](#-technologie-stack)
 - [Beveiliging](#-beveiliging)
 - [Installatie](#-installatie)
+- [Database Setup Guide](#-database-setup-guide) 📚
 - [Configuratie](#-configuratie)
 - [Gebruik](#-gebruik)
 - [API Documentatie](#-api-documentatie)
@@ -204,6 +205,10 @@ Kopieer de output naar `ENCRYPTION_KEY` in je `.env` bestand.
 
 5. **Database Setup**
 
+📚 **Nieuw bij database setup? Zie de [Volledige Database Setup Guide](DATABASE_SETUP.md)** voor stapsgewijze instructies voor het installeren en configureren van MSSQL Server vanaf nul, inclusief Windows, Linux, en Docker installaties.
+
+**Snelle Setup (als MSSQL Server al geïnstalleerd is):**
+
 Maak twee databases aan in SQL Server:
 - `FormSubmissionDB` - Voor versleutelde wachtwoordopslag
 - `UserRegistrationDB` - Voor gebruikersaccounts
@@ -271,6 +276,38 @@ npm run dev
 ```
 http://localhost:3000
 ```
+
+---
+
+## 📚 Database Setup Guide
+
+Nieuw bij MSSQL Server? Bekijk de **[Volledige Database Setup Guide (DATABASE_SETUP.md)](DATABASE_SETUP.md)** voor:
+
+### 🎯 Wat je vindt in de guide:
+
+- **Installatie-instructies** voor Windows, Linux (Ubuntu/RHEL), en Docker
+- **Stapsgewijze configuratie** van SQL Server vanaf nul
+- **Database en tabel creatie** met alle benodigde schema's
+- **Gebruikersbeheer** en security best practices
+- **Firewall configuratie** voor remote toegang
+- **Troubleshooting tips** voor veelvoorkomende problemen
+- **Backup strategieën** voor productie-omgevingen
+- **Test scripts** om je verbinding te verifiëren
+
+### 📖 Onderwerpen:
+
+1. MSSQL Server installatie (Windows/Linux/Docker)
+2. Initiële server configuratie
+3. Database creatie (`UserRegistrationDB` en `FormSubmissionDB`)
+4. Tabel schema's met indexen
+5. Database gebruikers en permissies
+6. Firewall en network configuratie
+7. Remote verbindingen instellen
+8. Connection testing
+9. Troubleshooting
+10. Security best practices
+
+**👉 [Start hier met de Database Setup Guide](DATABASE_SETUP.md)**
 
 ---
 
