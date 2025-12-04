@@ -78,7 +78,7 @@ function getCurrentUser() {
         setTimeout(() => {
             window.location.href = 'loginV3.html';
         }, 2000);
-        return null;
+        throw new Error('No user session'); // Prevent further execution
     }
     try {
         return JSON.parse(userData);
@@ -88,7 +88,7 @@ function getCurrentUser() {
         setTimeout(() => {
             window.location.href = 'loginV3.html';
         }, 2000);
-        return null;
+        throw new Error('Invalid user session'); // Prevent further execution
     }
 }
 
@@ -109,7 +109,12 @@ async function loadDataAndRender() {
     if (!user) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/getData?userId=${user.userId}`);
+        const response = await fetch(`${API_BASE_URL}/getData`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-id': user.userId.toString()
+            }
+        });
         if (!response.ok) {
             throw new Error('Kon data niet ophalen van de server.');
         }
@@ -284,7 +289,6 @@ async function saveDataToServer(id, userFieldName, passFieldName, domainFieldNam
 
     const userData = {
         GroupId: id,
-        UserId: user.userId,
         Username: groupContainer.querySelector(`input[name="${userFieldName}"]`).value,
         Password: groupContainer.querySelector(`input[name="${passFieldName}"]`).value, // Wordt versleuteld op de server
         Domain: groupContainer.querySelector(`input[name="${domainFieldName}"]`).value
@@ -300,6 +304,7 @@ async function saveDataToServer(id, userFieldName, passFieldName, domainFieldNam
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'x-user-id': user.userId.toString()
             },
             body: JSON.stringify(userData),
         });
@@ -335,7 +340,6 @@ async function updateDataToServer(id, userFieldName, passFieldName, domainFieldN
     if (!user) return;
 
     const userData = {
-        UserId: user.userId,
         Username: groupContainer.querySelector(`input[name="${userFieldName}"]`).value,
         Password: groupContainer.querySelector(`input[name="${passFieldName}"]`).value, // Wordt versleuteld op de server als het niet leeg is
         Domain: groupContainer.querySelector(`input[name="${domainFieldName}"]`).value
@@ -350,7 +354,8 @@ async function updateDataToServer(id, userFieldName, passFieldName, domainFieldN
         const response = await fetch(`${API_BASE_URL}/data/${id}`, {
             method: 'PUT', // PUT voor UPDATE
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-user-id': user.userId.toString()
             },
             body: JSON.stringify(userData)
         });
@@ -379,10 +384,11 @@ function deleteDataFromServer(groupId) {
     const user = getCurrentUser();
     if (!user) return Promise.reject(new Error('Geen gebruiker gevonden'));
 
-    return fetch(`${API_BASE_URL}/data/${groupId}?userId=${user.userId}`, {
+    return fetch(`${API_BASE_URL}/data/${groupId}`, {
         method: 'DELETE',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'x-user-id': user.userId.toString()
         }
     })
         .then(response => {

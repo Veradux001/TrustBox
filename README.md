@@ -235,13 +235,27 @@ CREATE TABLE FormSubmission (
 
 **BELANGRIJK:** Als je een bestaande database hebt, moet je de `UserId` kolom toevoegen:
 ```sql
--- Voeg UserId kolom toe aan bestaande FormSubmission tabel
-ALTER TABLE FormSubmission ADD UserId INT NOT NULL DEFAULT 1;
+-- Stap 1: Voeg UserId kolom toe als nullable
+ALTER TABLE FormSubmission ADD UserId INT NULL;
 
--- Voeg foreign key constraint toe (optioneel maar aanbevolen)
+-- Stap 2: Update bestaande records met een geldige UserId
+-- BELANGRIJK: Pas deze query aan voor jouw situatie:
+-- Optie A: Als alle bestaande data bij één gebruiker hoort (vervang 1 door de juiste UserId)
+UPDATE FormSubmission SET UserId = 1 WHERE UserId IS NULL;
+
+-- Optie B: Als je moet identificeren welke data bij welke gebruiker hoort,
+-- gebruik dan andere kolommen om eigenaarschap te bepalen
+
+-- Stap 3: Maak kolom NOT NULL nadat alle records zijn bijgewerkt
+ALTER TABLE FormSubmission ALTER COLUMN UserId INT NOT NULL;
+
+-- Stap 4: Voeg foreign key constraint toe (optioneel maar aanbevolen)
 ALTER TABLE FormSubmission
 ADD CONSTRAINT FK_FormSubmission_User
 FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId);
+
+-- Stap 5: Voeg database index toe voor betere query performance
+CREATE INDEX IDX_FormSubmission_UserId ON FormSubmission(UserId);
 ```
 
 6. **Start de server**
