@@ -151,9 +151,7 @@ CREATE TABLE FormSubmission (
 GO
 
 -- Create indexes for performance
-CREATE INDEX IDX_FormSubmission_UserId ON FormSubmission(UserId);
-GO
-
+-- Note: The composite index on (UserId, GroupId) can also serve queries filtering by UserId alone
 CREATE INDEX IDX_FormSubmission_UserId_GroupId ON FormSubmission(UserId, GroupId);
 GO
 
@@ -574,18 +572,33 @@ GO
 
 ```sql
 -- Create full backup of UserRegistrationDB
+-- Windows path:
 BACKUP DATABASE UserRegistrationDB
 TO DISK = 'C:\Backups\UserRegistrationDB_Full.bak'
 WITH FORMAT, INIT, NAME = 'Full Backup of UserRegistrationDB';
 GO
 
+-- Linux path (alternative):
+-- BACKUP DATABASE UserRegistrationDB
+-- TO DISK = '/var/opt/mssql/backup/UserRegistrationDB_Full.bak'
+-- WITH FORMAT, INIT, NAME = 'Full Backup of UserRegistrationDB';
+-- GO
+
 -- Create full backup of FormSubmissionDB
+-- Windows path:
 BACKUP DATABASE FormSubmissionDB
 TO DISK = 'C:\Backups\FormSubmissionDB_Full.bak'
 WITH FORMAT, INIT, NAME = 'Full Backup of FormSubmissionDB';
 GO
 
--- Verify backup
+-- Linux path (alternative):
+-- BACKUP DATABASE FormSubmissionDB
+-- TO DISK = '/var/opt/mssql/backup/FormSubmissionDB_Full.bak'
+-- WITH FORMAT, INIT, NAME = 'Full Backup of FormSubmissionDB';
+-- GO
+
+-- Verify backup (adjust path for your platform)
+-- Windows:
 RESTORE VERIFYONLY
 FROM DISK = 'C:\Backups\UserRegistrationDB_Full.bak';
 GO
@@ -593,6 +606,15 @@ GO
 RESTORE VERIFYONLY
 FROM DISK = 'C:\Backups\FormSubmissionDB_Full.bak';
 GO
+
+-- Linux (alternative):
+-- RESTORE VERIFYONLY
+-- FROM DISK = '/var/opt/mssql/backup/UserRegistrationDB_Full.bak';
+-- GO
+--
+-- RESTORE VERIFYONLY
+-- FROM DISK = '/var/opt/mssql/backup/FormSubmissionDB_Full.bak';
+-- GO
 ```
 
 ### Database Restore
@@ -605,10 +627,17 @@ GO
 ALTER DATABASE UserRegistrationDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 GO
 
+-- Windows path:
 RESTORE DATABASE UserRegistrationDB
 FROM DISK = 'C:\Backups\UserRegistrationDB_Full.bak'
 WITH REPLACE;
 GO
+
+-- Linux path (alternative):
+-- RESTORE DATABASE UserRegistrationDB
+-- FROM DISK = '/var/opt/mssql/backup/UserRegistrationDB_Full.bak'
+-- WITH REPLACE;
+-- GO
 
 ALTER DATABASE UserRegistrationDB SET MULTI_USER;
 GO
@@ -620,10 +649,17 @@ GO
 ALTER DATABASE FormSubmissionDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 GO
 
+-- Windows path:
 RESTORE DATABASE FormSubmissionDB
 FROM DISK = 'C:\Backups\FormSubmissionDB_Full.bak'
 WITH REPLACE;
 GO
+
+-- Linux path (alternative):
+-- RESTORE DATABASE FormSubmissionDB
+-- FROM DISK = '/var/opt/mssql/backup/FormSubmissionDB_Full.bak'
+-- WITH REPLACE;
+-- GO
 
 ALTER DATABASE FormSubmissionDB SET MULTI_USER;
 GO

@@ -218,11 +218,14 @@ Voer de volgende SQL scripts uit:
 **UserRegistrationDB:**
 ```sql
 CREATE TABLE tbl_Users (
-    Username NVARCHAR(50) PRIMARY KEY,
+    UserId INT IDENTITY(1,1) PRIMARY KEY,
+    Username NVARCHAR(50) UNIQUE NOT NULL,
     Email NVARCHAR(100) UNIQUE NOT NULL,
     PasswordHash CHAR(60) NOT NULL,
     AuthorizedPerson NVARCHAR(100),
-    AuthorizedEmail NVARCHAR(100)
+    AuthorizedEmail NVARCHAR(100),
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    LastModified DATETIME2 DEFAULT GETDATE()
 );
 ```
 
@@ -234,8 +237,13 @@ CREATE TABLE FormSubmission (
     Username NVARCHAR(255) NOT NULL,
     Password NVARCHAR(MAX) NOT NULL,
     Domain NVARCHAR(255) NOT NULL,
-    FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId)
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    LastModified DATETIME2 DEFAULT GETDATE()
 );
+
+-- Note: Cross-database foreign keys are not supported in SQL Server.
+-- Referential integrity for UserId is enforced at the application level.
+-- See DATABASE_SETUP.md for an optional validation trigger.
 ```
 
 **BELANGRIJK:** Als je een bestaande database hebt, moet je de `UserId` kolom toevoegen:
@@ -254,13 +262,11 @@ UPDATE FormSubmission SET UserId = 1 WHERE UserId IS NULL;
 -- Stap 3: Maak kolom NOT NULL nadat alle records zijn bijgewerkt
 ALTER TABLE FormSubmission ALTER COLUMN UserId INT NOT NULL;
 
--- Stap 4: Voeg foreign key constraint toe (optioneel maar aanbevolen)
-ALTER TABLE FormSubmission
-ADD CONSTRAINT FK_FormSubmission_User
-FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId);
+-- Stap 4: Voeg database index toe voor betere query performance
+CREATE INDEX IDX_FormSubmission_UserId_GroupId ON FormSubmission(UserId, GroupId);
 
--- Stap 5: Voeg database index toe voor betere query performance
-CREATE INDEX IDX_FormSubmission_UserId ON FormSubmission(UserId);
+-- Note: Cross-database foreign key constraints are not supported in SQL Server.
+-- See DATABASE_SETUP.md for an optional validation trigger to enforce referential integrity.
 ```
 
 6. **Start de server**
