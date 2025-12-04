@@ -285,16 +285,28 @@ async function initializeDatabase() {
 // ** --- 3. GET ENDPOINT VOOR DATA OPHALEN (READ) --- **
 // Haalt de data op en ontsleutelt het wachtwoord voor de client
 router.get('/getData', async (req, res) => {
+    // 🔒 SECURITY FIX: Require UserId to filter data by user
+    const userId = req.query.userId || req.headers['x-user-id'];
+
+    if (!userId) {
+        return res.status(401).json({ message: 'Gebruikers-ID is verplicht. Log opnieuw in.' });
+    }
+
     const selectQuery = `
-        SELECT GroupId, Username, Password, Domain 
-        FROM FormSubmission 
+        SELECT GroupId, Username, Password, Domain
+        FROM FormSubmission
+        WHERE UserId = @UserId
         ORDER BY GroupId ASC;
     `;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
 
     try {
-        const result = await pool.request().query(selectQuery);
+        const validatedUserId = validateInteger(userId, 'UserId');
+
+        const request = pool.request();
+        request.input('UserId', sql.Int, validatedUserId);
+        const result = await request.query(selectQuery);
 
         // Ontsleutel de wachtwoorden voordat ze naar de client gaan
         const decryptedData = result.recordset.map(record => ({
@@ -313,11 +325,16 @@ router.get('/getData', async (req, res) => {
 // ** --- 4. POST ENDPOINT VOOR OPSLAG (CREATE) --- **
 // Versleutelt het wachtwoord voordat het wordt opgeslagen
 router.post('/saveData', async (req, res) => {
-    const { GroupId, Username, Password, Domain } = req.body;
+    const { GroupId, Username, Password, Domain, UserId } = req.body;
 
     if (!pool) {
         console.error("Database pool is niet beschikbaar bij saveData request");
         return res.status(503).json({ message: 'Database niet beschikbaar. Neem contact op met de beheerder.' });
+    }
+
+    // 🔒 SECURITY FIX: Require UserId
+    if (!UserId) {
+        return res.status(401).json({ message: 'Gebruikers-ID is verplicht. Log opnieuw in.' });
     }
 
     if (!GroupId || !Username || !Password || !Domain) {
@@ -326,6 +343,7 @@ router.post('/saveData', async (req, res) => {
 
     try {
         // Valideer invoer
+        const validatedUserId = validateInteger(UserId, 'UserId');
         const validatedGroupId = validateInteger(GroupId, 'GroupId');
         const validatedUsername = validateStringLength(Username, 'Username', 255);
         const validatedDomain = validateStringLength(Domain, 'Domain', 255);
@@ -344,12 +362,13 @@ router.post('/saveData', async (req, res) => {
         }
 
         const insertQuery = `
-            INSERT INTO FormSubmission (GroupId, Username, Password, Domain)
-            VALUES (@GroupId, @Username, @EncryptedPassword, @Domain);
+            INSERT INTO FormSubmission (GroupId, UserId, Username, Password, Domain)
+            VALUES (@GroupId, @UserId, @Username, @EncryptedPassword, @Domain);
         `;
 
         const request = pool.request();
         request.input('GroupId', sql.Int, validatedGroupId);
+        request.input('UserId', sql.Int, validatedUserId);
         request.input('Username', sql.NVarChar, validatedUsername);
         request.input('EncryptedPassword', sql.NVarChar, encryptedPassword); // Gebruik versleuteld wachtwoord
         request.input('Domain', sql.NVarChar, validatedDomain);
@@ -382,9 +401,14 @@ router.post('/saveData', async (req, res) => {
 // ** --- 5. PUT ENDPOINT VOOR UPDATE (UPDATE) --- **
 router.put('/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
-    const { Username, Password, Domain } = req.body;
+    const { Username, Password, Domain, UserId } = req.body;
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
+
+    // 🔒 SECURITY FIX: Require UserId for authorization
+    if (!UserId) {
+        return res.status(401).json({ message: 'Gebruikers-ID is verplicht. Log opnieuw in.' });
+    }
 
     if (!Username || !Domain) {
         return res.status(400).json({ message: 'Username en Domain velden zijn verplicht voor update.' });
@@ -395,6 +419,7 @@ router.put('/data/:groupId', async (req, res) => {
 
     try {
         // Valideer invoer
+        const validatedUserId = validateInteger(UserId, 'UserId');
         const validatedGroupId = validateInteger(groupId, 'groupId');
         const validatedUsername = validateStringLength(Username, 'Username', 255);
         const validatedDomain = validateStringLength(Domain, 'Domain', 255);
@@ -418,7 +443,7 @@ router.put('/data/:groupId', async (req, res) => {
                 SET Username = @Username,
                     Password = @EncryptedPassword,
                     Domain = @Domain
-                WHERE GroupId = @GroupId;
+                WHERE GroupId = @GroupId AND UserId = @UserId;
             `;
         } else {
             // Als Password niet is opgegeven of leeg is, behoud het oude wachtwoord
@@ -426,12 +451,13 @@ router.put('/data/:groupId', async (req, res) => {
                 UPDATE FormSubmission
                 SET Username = @Username,
                     Domain = @Domain
-                WHERE GroupId = @GroupId;
+                WHERE GroupId = @GroupId AND UserId = @UserId;
             `;
         }
 
         const request = pool.request();
         request.input('GroupId', sql.Int, validatedGroupId);
+        request.input('UserId', sql.Int, validatedUserId);
         request.input('Username', sql.NVarChar, validatedUsername);
         request.input('Domain', sql.NVarChar, validatedDomain);
 
@@ -442,7 +468,7 @@ router.put('/data/:groupId', async (req, res) => {
         const result = await request.query(updateQuery);
 
         if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ message: 'Geen record gevonden om bij te werken.' });
+            return res.status(404).json({ message: 'Geen record gevonden om bij te werken, of je hebt geen toegang tot dit record.' });
         }
 
         res.status(200).json({ message: `Data voor Groep ${validatedGroupId} succesvol bijgewerkt (UPDATE).` });
@@ -457,24 +483,32 @@ router.put('/data/:groupId', async (req, res) => {
 // ** --- 6. DELETE ENDPOINT VOOR VERWIJDERING (DELETE) --- **
 router.delete('/data/:groupId', async (req, res) => {
     const groupId = req.params.groupId;
+    // 🔒 SECURITY FIX: Require UserId for authorization
+    const userId = req.query.userId || req.headers['x-user-id'];
 
     if (!pool) return res.status(503).json({ message: 'Database niet beschikbaar.' });
 
+    if (!userId) {
+        return res.status(401).json({ message: 'Gebruikers-ID is verplicht. Log opnieuw in.' });
+    }
+
     const deleteQuery = `
         DELETE FROM FormSubmission
-        WHERE GroupId = @GroupId;
+        WHERE GroupId = @GroupId AND UserId = @UserId;
     `;
 
     try {
         // Valideer invoer
+        const validatedUserId = validateInteger(userId, 'UserId');
         const validatedGroupId = validateInteger(groupId, 'groupId');
 
         const request = pool.request();
         request.input('GroupId', sql.Int, validatedGroupId);
+        request.input('UserId', sql.Int, validatedUserId);
         const result = await request.query(deleteQuery);
 
         if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ message: 'Geen record gevonden met die GroupId om te verwijderen.' });
+            return res.status(404).json({ message: 'Geen record gevonden met die GroupId om te verwijderen, of je hebt geen toegang tot dit record.' });
         }
 
         res.status(200).json({ message: `Data voor Groep ${validatedGroupId} succesvol verwijderd.` });

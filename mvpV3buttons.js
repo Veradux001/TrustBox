@@ -69,6 +69,30 @@ function createMessageContainer() {
 // --- 1. FUNCTIONALITEIT: DATA OPHALEN EN WEERGEVEN ---
 
 /**
+ * Haalt de huidige gebruiker op uit localStorage
+ */
+function getCurrentUser() {
+    const userData = localStorage.getItem('trustbox_user');
+    if (!userData) {
+        showMessage('Je bent niet ingelogd. Doorverwijzen naar login...', 'error');
+        setTimeout(() => {
+            window.location.href = 'loginV3.html';
+        }, 2000);
+        return null;
+    }
+    try {
+        return JSON.parse(userData);
+    } catch (e) {
+        console.error('Fout bij het parsen van gebruikersgegevens:', e);
+        showMessage('Ongeldige sessie. Log opnieuw in.', 'error');
+        setTimeout(() => {
+            window.location.href = 'loginV3.html';
+        }, 2000);
+        return null;
+    }
+}
+
+/**
  * Laadt data van de server, inclusief ontsleutelde wachtwoorden, en toont de formuliergroepen.
  */
 async function loadDataAndRender() {
@@ -80,8 +104,12 @@ async function loadDataAndRender() {
     groupCount = 0;
     fieldCount = 0;
 
+    // 🔒 SECURITY FIX: Haal UserId op
+    const user = getCurrentUser();
+    if (!user) return;
+
     try {
-        const response = await fetch(`${API_BASE_URL}/getData`);
+        const response = await fetch(`${API_BASE_URL}/getData?userId=${user.userId}`);
         if (!response.ok) {
             throw new Error('Kon data niet ophalen van de server.');
         }
@@ -250,8 +278,13 @@ async function saveDataToServer(id, userFieldName, passFieldName, domainFieldNam
         return;
     }
 
+    // 🔒 SECURITY FIX: Haal UserId op
+    const user = getCurrentUser();
+    if (!user) return;
+
     const userData = {
         GroupId: id,
+        UserId: user.userId,
         Username: groupContainer.querySelector(`input[name="${userFieldName}"]`).value,
         Password: groupContainer.querySelector(`input[name="${passFieldName}"]`).value, // Wordt versleuteld op de server
         Domain: groupContainer.querySelector(`input[name="${domainFieldName}"]`).value
@@ -297,7 +330,12 @@ async function updateDataToServer(id, userFieldName, passFieldName, domainFieldN
         return;
     }
 
+    // 🔒 SECURITY FIX: Haal UserId op
+    const user = getCurrentUser();
+    if (!user) return;
+
     const userData = {
+        UserId: user.userId,
         Username: groupContainer.querySelector(`input[name="${userFieldName}"]`).value,
         Password: groupContainer.querySelector(`input[name="${passFieldName}"]`).value, // Wordt versleuteld op de server als het niet leeg is
         Domain: groupContainer.querySelector(`input[name="${domainFieldName}"]`).value
@@ -337,7 +375,11 @@ async function updateDataToServer(id, userFieldName, passFieldName, domainFieldN
  * Stuurt een DELETE verzoek naar de Node.js server.
  */
 function deleteDataFromServer(groupId) {
-    return fetch(`${API_BASE_URL}/data/${groupId}`, {
+    // 🔒 SECURITY FIX: Haal UserId op
+    const user = getCurrentUser();
+    if (!user) return Promise.reject(new Error('Geen gebruiker gevonden'));
+
+    return fetch(`${API_BASE_URL}/data/${groupId}?userId=${user.userId}`, {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json'

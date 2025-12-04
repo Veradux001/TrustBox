@@ -225,10 +225,23 @@ CREATE TABLE tbl_Users (
 ```sql
 CREATE TABLE FormSubmission (
     GroupId INT PRIMARY KEY,
+    UserId INT NOT NULL,
     Username NVARCHAR(255) NOT NULL,
     Password NVARCHAR(MAX) NOT NULL,
-    Domain NVARCHAR(255) NOT NULL
+    Domain NVARCHAR(255) NOT NULL,
+    FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId)
 );
+```
+
+**BELANGRIJK:** Als je een bestaande database hebt, moet je de `UserId` kolom toevoegen:
+```sql
+-- Voeg UserId kolom toe aan bestaande FormSubmission tabel
+ALTER TABLE FormSubmission ADD UserId INT NOT NULL DEFAULT 1;
+
+-- Voeg foreign key constraint toe (optioneel maar aanbevolen)
+ALTER TABLE FormSubmission
+ADD CONSTRAINT FK_FormSubmission_User
+FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId);
 ```
 
 6. **Start de server**

@@ -145,14 +145,24 @@ Cannot insert the value NULL into column ...
 **What it means:** The database table structure doesn't match what the code expects.
 
 **Fix:**
-Ensure your `FormSubmission` table has these columns:
+Ensure your `FormSubmission` table has these columns (including the new `UserId` column for security):
 ```sql
 CREATE TABLE FormSubmission (
     GroupId INT PRIMARY KEY,
+    UserId INT NOT NULL,
     Username NVARCHAR(255) NOT NULL,
     Password NVARCHAR(MAX) NOT NULL,
-    Domain NVARCHAR(255) NOT NULL
+    Domain NVARCHAR(255) NOT NULL,
+    FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId)
 );
+```
+
+If you're upgrading from an older version without `UserId`:
+```sql
+ALTER TABLE FormSubmission ADD UserId INT NOT NULL DEFAULT 1;
+ALTER TABLE FormSubmission
+ADD CONSTRAINT FK_FormSubmission_User
+FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId);
 ```
 
 ### Quick Checklist
