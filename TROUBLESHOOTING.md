@@ -1,12 +1,8 @@
-# TrustBox Troubleshooting Guide
+# Troubleshooting Guide
 
 ## Error: "Fout bij opslaan: Fout bij het opslaan van data op de server"
 
-This error occurs when trying to save a new login. Here's how to diagnose and fix it.
-
-### Step 1: Check Server Logs
-
-The improved error logging will show you exactly what's wrong. Check your server logs:
+This error occurs when trying to save a new login. Check server logs to diagnose:
 
 ```bash
 # If using PM2
@@ -14,124 +10,97 @@ pm2 logs trustbox
 
 # If using systemd
 sudo journalctl -u trustbox.service -f
-
-# If running directly
-# Look at the terminal where node is running
 ```
 
-Look for one of these error messages:
+## Common Issues
 
-### Possible Cause 1: CORS Issue
+### Issue 1: CORS Error
 
 **Error in logs:**
 ```
 CORS geblokkeerd voor origin: https://trustbox.diemitchell.com
-Toegestane origins zijn: http://localhost:3000
 ```
 
-**What it means:** Your production domain is not in the allowed origins list.
-
 **Fix:**
-1. Edit your production server's `.env` file:
-   ```bash
-   sudo nano /path/to/TrustBox/backend/.env
+1. Edit `backend/.env`:
+   ```
+   ALLOWED_ORIGINS=http://localhost:3000,https://trustbox.diemitchell.com
    ```
 
-2. Add or update the `ALLOWED_ORIGINS` line:
-   ```
-   ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://trustbox.diemitchell.com
-   ```
-
-3. Restart the Node.js server:
+2. Restart the server:
    ```bash
-   # If using PM2
    pm2 restart trustbox
-
-   # If using systemd
+   # or
    sudo systemctl restart trustbox.service
    ```
 
-### Possible Cause 2: Missing or Invalid ENCRYPTION_KEY
+### Issue 2: Missing or Invalid Encryption Key
 
 **Error in logs:**
 ```
-Encryptie fout bij opslag: ...
 ENCRYPTION_KEY is niet ingesteld in omgevingsvariabelen
 ```
-or
-```
-ENCRYPTION_KEY moet exact 32 bytes (64 hex karakters) zijn
-```
-
-**What it means:** The encryption key is missing or has the wrong format.
 
 **Fix:**
-1. Generate a new encryption key:
+1. Generate a new key:
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
-2. Copy the output (should be 64 hex characters)
-
-3. Add it to your `.env` file:
+2. Add to `backend/.env`:
    ```
    ENCRYPTION_KEY=your_64_character_hex_key_here
    ```
 
-4. Restart the server (see commands above)
+3. Restart the server
 
-### Possible Cause 3: Database Connection Issue
+### Issue 3: Database Connection Error
 
 **Error in logs:**
 ```
-Database pool is niet beschikbaar bij saveData request
+Database pool is niet beschikbaar
 ```
 or
 ```
 FATALE FOUT: Databaseverbinding is mislukt
 ```
 
-**What it means:** The server cannot connect to the SQL Server database.
-
 **Fix:**
-1. Check database credentials in `.env`:
+1. Check database credentials in `backend/.env`:
    ```
    DB_USER=your_database_user
    DB_PASSWORD=your_database_password
    DB_SERVER=your_database_server_ip
-   DB_DATABASE_SUBMISSION=your_submission_database_name
+   DB_DATABASE_SUBMISSION=FormSubmissionDB
+   DB_DATABASE_REGISTER=UserRegistrationDB
    DB_ENCRYPT=false
    DB_TRUST_SERVER_CERTIFICATE=true
    ```
 
 2. Test database connectivity:
    ```bash
-   # From the server, try to ping the database server
+   # Ping database server
    ping your_database_server_ip
 
-   # Try to connect using sqlcmd (if installed)
+   # Try to connect
    sqlcmd -S your_database_server_ip -U your_database_user -P your_database_password
    ```
 
-3. Check firewall rules:
-   - Ensure port 1433 (SQL Server) is open
-   - Ensure the database server allows connections from your web server's IP
+3. Check firewall rules (port 1433 must be open)
 
-4. Restart the server after fixing credentials
+4. Restart the server
 
-### Possible Cause 4: Duplicate GroupId
+### Issue 4: Duplicate GroupId
 
 **Error in logs:**
 ```
 Er bestaat al een record met dit GroupId
 ```
 
-**What it means:** You're trying to save a login with a GroupId that already exists in the database.
-
 **Fix:**
 Use the "Bijwerken" (Update) button instead of "Opslaan" (Save) to update an existing record, or delete the old record first.
 
-### Possible Cause 5: Database Schema Issue
+### Issue 5: Database Schema Mismatch
 
 **Error in logs:**
 ```
@@ -142,60 +111,51 @@ or
 Cannot insert the value NULL into column ...
 ```
 
-**What it means:** The database table structure doesn't match what the code expects.
-
 **Fix:**
-Ensure your `FormSubmission` table has these columns (including the new `UserId` column for security):
+Ensure your `FormSubmission` table has the correct structure:
 ```sql
 CREATE TABLE FormSubmission (
-    GroupId INT PRIMARY KEY,
     UserId INT NOT NULL,
+    GroupId INT NOT NULL,
     Username NVARCHAR(255) NOT NULL,
     Password NVARCHAR(MAX) NOT NULL,
     Domain NVARCHAR(255) NOT NULL,
-    FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId)
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    LastModified DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT PK_FormSubmission_UserId_GroupId PRIMARY KEY (UserId, GroupId)
 );
 ```
 
-If you're upgrading from an older version without `UserId`:
+If upgrading from an older version without `UserId`:
 ```sql
--- Stap 1: Voeg UserId kolom toe als nullable
+-- Add UserId column
 ALTER TABLE FormSubmission ADD UserId INT NULL;
 
--- Stap 2: Update bestaande records met een geldige UserId
--- BELANGRIJK: Pas deze query aan voor jouw situatie
+-- Update existing records with a valid UserId
 UPDATE FormSubmission SET UserId = 1 WHERE UserId IS NULL;
 
--- Stap 3: Maak kolom NOT NULL nadat alle records zijn bijgewerkt
+-- Make column NOT NULL
 ALTER TABLE FormSubmission ALTER COLUMN UserId INT NOT NULL;
 
--- Stap 4: Voeg foreign key constraint toe
-ALTER TABLE FormSubmission
-ADD CONSTRAINT FK_FormSubmission_User
-FOREIGN KEY (UserId) REFERENCES tbl_Users(UserId);
-
--- Stap 5: Voeg database index toe voor betere query performance
+-- Add index
 CREATE INDEX IDX_FormSubmission_UserId ON FormSubmission(UserId);
 ```
 
-### Quick Checklist
-
-Use this checklist to diagnose the issue:
+## Quick Diagnostic Checklist
 
 - [ ] Check server logs for specific error messages
-- [ ] Verify `ALLOWED_ORIGINS` includes `https://trustbox.diemitchell.com`
+- [ ] Verify `ALLOWED_ORIGINS` includes your production domain
 - [ ] Verify `ENCRYPTION_KEY` exists and is 64 hex characters
 - [ ] Verify database connection credentials are correct
 - [ ] Verify the server can reach the database server
 - [ ] Restart the Node.js server after making changes
 - [ ] Clear browser cache and try again
 
-### Testing After Fix
+## Testing After Fix
 
-After applying a fix, test with curl:
+Test with curl:
 
 ```bash
-# Test that the server is running and CORS is working
 curl -X POST https://trustbox.diemitchell.com/api/saveData \
   -H "Content-Type: application/json" \
   -H "Origin: https://trustbox.diemitchell.com" \
@@ -207,35 +167,31 @@ curl -X POST https://trustbox.diemitchell.com/api/saveData \
   }'
 ```
 
-Expected responses:
+**Expected responses:**
 - **Success:** `{"message":"Data voor Groep 999 succesvol opgeslagen..."}`
 - **CORS Error:** No response or CORS-related error
 - **Database Error:** `{"message":"Database niet beschikbaar..."}`
 - **Duplicate:** `{"message":"Er bestaat al een record met dit GroupId..."}`
 
-### Still Having Issues?
+## Still Having Issues?
 
-If none of the above fixes work:
-
-1. Enable debug mode in Node.js:
+1. **Enable debug mode:**
    ```bash
    DEBUG=* node backend/serverV2.js
    ```
 
-2. Check Nginx error logs (if using Nginx):
+2. **Check Nginx error logs:**
    ```bash
    sudo tail -f /var/log/nginx/error.log
    ```
 
-3. Verify the correct server file is running:
+3. **Verify correct server file:**
    ```bash
-   # Check process list
    ps aux | grep node
-
-   # You should see "serverV2.js", NOT "InsertRegistration.js"
+   # Should show "serverV2.js", NOT "InsertRegistration.js"
    ```
 
-4. Check browser console for additional error details:
+4. **Check browser console:**
    - Open Developer Tools (F12)
    - Go to Console tab
-   - Try saving again and note any CORS or network errors
+   - Try saving again and note any errors

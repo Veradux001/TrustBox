@@ -1,29 +1,25 @@
-# Nginx Configuration Fix for Login Error
+# Nginx Configuration Fix
 
 ## Problem
 
-The error "Cannot POST /login" occurs because the Nginx reverse proxy is stripping the `/api` prefix when forwarding requests to the Node.js backend.
+The error "Cannot POST /login" occurs because Nginx is stripping the `/api` prefix when forwarding requests to the Node.js backend.
 
 ## Root Cause
 
-The production Nginx configuration likely has trailing slashes that strip the `/api` prefix:
+Nginx configuration with trailing slashes strips the `/api` prefix:
 
 ```nginx
-# CURRENT (INCORRECT) CONFIGURATION
+# INCORRECT CONFIGURATION
 location /api/ {
     proxy_pass http://localhost:3000/;
-    # ...other config...
 }
 ```
 
-When a request comes in as `/api/login`, Nginx removes `/api` and forwards only `/login` to the backend.
-But the backend expects `/api/login` because routes are mounted under `/api` prefix.
+When a request comes in as `/api/login`, Nginx removes `/api` and forwards only `/login` to the backend, but the backend expects `/api/login`.
 
-## Solution: Fix Nginx Configuration
+## Solution
 
 ### Step 1: Locate Nginx Configuration
-
-SSH into your server and find the Nginx config file:
 
 ```bash
 # Common locations:
@@ -34,12 +30,11 @@ SSH into your server and find the Nginx config file:
 
 ### Step 2: Edit the Configuration
 
-Open the config file:
 ```bash
 sudo nano /etc/nginx/sites-available/trustbox.diemitchell.com
 ```
 
-### Step 3: Update the /api Location Block
+### Step 3: Remove Trailing Slashes
 
 Change:
 ```nginx
@@ -47,7 +42,7 @@ location /api/ {
     proxy_pass http://localhost:3000/;
 ```
 
-To (remove trailing slashes):
+To:
 ```nginx
 location /api {
     proxy_pass http://localhost:3000;
@@ -88,30 +83,26 @@ server {
 ### Step 4: Test and Reload Nginx
 
 ```bash
-# Test configuration for syntax errors
+# Test configuration
 sudo nginx -t
 
-# If test passes, reload Nginx
+# Reload Nginx
 sudo systemctl reload nginx
-
-# Or restart Nginx
-sudo systemctl restart nginx
 ```
 
 ### Step 5: Verify the Fix
 
-Test the login endpoint:
 ```bash
 curl -X POST https://trustbox.diemitchell.com/api/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"test"}'
 ```
 
-You should get a JSON response (401 Unauthorized is expected with invalid credentials), NOT "Cannot POST /login".
+You should get a JSON response, NOT "Cannot POST /login".
 
-## How Nginx proxy_pass Works
+## How proxy_pass Works
 
-### With Trailing Slashes (WRONG for our setup)
+### With Trailing Slashes (WRONG)
 ```nginx
 location /api/ {
     proxy_pass http://localhost:3000/;
@@ -131,44 +122,35 @@ location /api {
 
 ### Still Getting "Cannot POST /login"?
 
-1. **Check if Nginx actually reloaded:**
-   ```bash
-   sudo systemctl status nginx
-   sudo nginx -T | grep -A 10 "location /api"
-   ```
-
-2. **Check Nginx error logs:**
-   ```bash
-   sudo tail -f /var/log/nginx/error.log
-   ```
-
-3. **Check Node.js backend is running:**
-   ```bash
-   # If using PM2
-   pm2 status
-   pm2 logs trustbox
-
-   # If using systemd
-   sudo systemctl status trustbox.service
-   sudo journalctl -u trustbox.service -f
-   ```
-
-4. **Verify backend routes:**
-   ```bash
-   curl http://localhost:3000/api/login
-   # Should NOT return "Cannot POST /login"
-   ```
-
-### Check Which Configuration File is Active
-
+**Check if Nginx reloaded:**
 ```bash
-# Show active Nginx configuration
-sudo nginx -T
-
-# Find all configuration files
-sudo find /etc/nginx -name "*.conf" -o -name "*trustbox*"
+sudo systemctl status nginx
+sudo nginx -T | grep -A 10 "location /api"
 ```
 
-## Alternative: Change Backend Instead
+**Check Nginx error logs:**
+```bash
+sudo tail -f /var/log/nginx/error.log
+```
 
-If you cannot modify the Nginx configuration, you can modify the backend to work without the `/api` prefix. See the code changes in the pull request for this issue.
+**Check Node.js backend is running:**
+```bash
+# If using PM2
+pm2 status
+pm2 logs trustbox
+
+# If using systemd
+sudo systemctl status trustbox.service
+```
+
+**Verify backend routes:**
+```bash
+curl http://localhost:3000/api/login
+# Should NOT return "Cannot POST /login"
+```
+
+**Find active configuration:**
+```bash
+sudo nginx -T
+sudo find /etc/nginx -name "*.conf" -o -name "*trustbox*"
+```
