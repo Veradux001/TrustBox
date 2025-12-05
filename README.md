@@ -14,7 +14,7 @@
 
 ## 🔐 Over TrustBox
 
-TrustBox is een moderne, veilige wachtwoordbeheerder die uw gevoelige inloggegevens beschermt met AES-256 versleuteling. Ontwikkeld met Node.js en Express, biedt TrustBox een gebruiksvriendelijke interface voor het veilig opslaan en beheren van wachtwoorden.
+TrustBox is een moderne wachtwoordbeheerder die je inloggegevens veilig opslaat met AES-256 encryptie. De applicatie is gemaakt met Node.js en Express, en heeft een gebruiksvriendelijke interface voor het beheren van je wachtwoorden.
 
 **Live Applicatie:** [https://trustbox.diemitchell.com](https://trustbox.diemitchell.com)
 
@@ -22,12 +22,12 @@ TrustBox is een moderne, veilige wachtwoordbeheerder die uw gevoelige inloggegev
 
 ## ✨ Belangrijkste Functies
 
-- 🔒 **AES-256-CBC Versleuteling** - Militaire-graad encryptie voor alle wachtwoorden
+- 🔒 **AES-256-CBC Encryptie** - Sterke encryptie voor alle wachtwoorden
 - 🔐 **Bcrypt Authenticatie** - Veilige wachtwoordhashing met 12 salt rounds
 - 👤 **Gebruikersbeheer** - Registratie, login en sessie management
-- 📁 **Georganiseerde Opslag** - Beheer wachtwoorden in categorieën
-- 🛡️ **Beveiligde API** - SQL injection en XSS bescherming
-- 🌐 **HTTPS Enforcement** - Versleutelde verbindingen vereist
+- 📁 **Georganiseerde Opslag** - Wachtwoorden beheren per categorie
+- 🛡️ **Beveiligde API** - Bescherming tegen SQL injection en XSS
+- 🌐 **HTTPS Verplicht** - Alleen versleutelde verbindingen toegestaan
 
 ---
 
@@ -36,7 +36,7 @@ TrustBox is een moderne, veilige wachtwoordbeheerder die uw gevoelige inloggegev
 - **Backend:** Node.js + Express.js
 - **Database:** Microsoft SQL Server
 - **Authenticatie:** Bcrypt
-- **Versleuteling:** AES-256-CBC (Node.js Crypto)
+- **Encryptie:** AES-256-CBC (Node.js Crypto)
 - **Frontend:** HTML5, CSS3, Vanilla JavaScript
 
 ---
@@ -67,18 +67,18 @@ npm install
 cp .env.example .env
 ```
 
-Bewerk `.env` met je database gegevens:
+Pas `.env` aan met jouw database gegevens:
 ```env
-DB_USER=your_username
-DB_PASSWORD=your_password
+DB_USER=jouw_gebruikersnaam
+DB_PASSWORD=jouw_wachtwoord
 DB_SERVER=localhost
 DB_DATABASE_SUBMISSION=FormSubmissionDB
 DB_DATABASE_REGISTER=UserRegistrationDB
 PORT=3000
-ENCRYPTION_KEY=your_32_byte_hex_key
+ENCRYPTION_KEY=jouw_32_byte_hex_key
 ```
 
-4. **Genereer encryptiesleutel**
+4. **Genereer een encryptiesleutel**
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
@@ -103,18 +103,18 @@ http://localhost:3000
 
 ## 🔒 Beveiliging
 
-TrustBox implementeert meerdere beveiligingslagen:
+TrustBox gebruikt meerdere beveiligingslagen:
 
-- **AES-256-CBC** versleuteling voor wachtwoordopslag
+- **AES-256-CBC** encryptie voor opgeslagen wachtwoorden
 - **Bcrypt hashing** voor gebruikerswachtwoorden (12 salt rounds)
 - **Geparametriseerde SQL queries** tegen SQL injection
-- **Input validatie** op alle invoervelden
+- **Input validatie** op alle invoer
 - **CORS whitelist** voor toegangscontrole
-- **HTTPS enforcement** voor veilige verbindingen
+- **HTTPS verplicht** voor veilige verbindingen
 
 ### Wachtwoordvereisten
-- Minimum 8 tekens
-- Hoofdletters, kleine letters, cijfers en speciale tekens vereist
+- Minimaal 8 tekens
+- Moet hoofdletters, kleine letters, cijfers en speciale tekens bevatten
 
 ---
 
@@ -123,14 +123,14 @@ TrustBox implementeert meerdere beveiligingslagen:
 Base URL: `https://trustbox.diemitchell.com/api`
 
 ### Wachtwoordbeheer
-- `GET /getData` - Haal alle wachtwoorden op (gedecrypteerd)
-- `POST /saveData` - Sla nieuw wachtwoord op
-- `PUT /data/:groupId` - Update wachtwoord
-- `DELETE /data/:groupId` - Verwijder wachtwoord
+- `GET /getData` - Alle wachtwoorden ophalen (gedecrypteerd)
+- `POST /saveData` - Nieuw wachtwoord opslaan
+- `PUT /data/:groupId` - Wachtwoord bijwerken
+- `DELETE /data/:groupId` - Wachtwoord verwijderen
 
 ### Gebruikersbeheer
-- `POST /register` - Registreer nieuwe gebruiker
-- `POST /login` - Log in gebruiker
+- `POST /register` - Nieuwe gebruiker registreren
+- `POST /login` - Gebruiker inloggen
 
 Voor gedetailleerde API documentatie, zie [DATABASE_SETUP.md](DATABASE_SETUP.md).
 
@@ -140,10 +140,10 @@ Voor gedetailleerde API documentatie, zie [DATABASE_SETUP.md](DATABASE_SETUP.md)
 
 ```
 TrustBox/
-├── backend/              # Node.js Backend
+├── backend/              # Node.js backend
 │   ├── serverV2.js      # Hoofd API server
 │   ├── package.json     # Dependencies
-│   └── .env.example     # Configuratie template
+│   └── .env.example     # Configuratie voorbeeld
 ├── mvpV3.html           # Dashboard
 ├── loginV3.html         # Inlogpagina
 ├── registerV3.html      # Registratiepagina
@@ -164,26 +164,26 @@ npm run dev  # Start met auto-reload
 
 ### Beschikbare scripts
 ```bash
-npm start       # Productie server
+npm start       # Productieserver
 npm run dev     # Development server
 ```
 
 ### Code Guidelines
 - Gebruik ES6+ JavaScript
 - Async/await voor asynchrone code
-- Altijd try-catch error handling
-- Geparametriseerde SQL queries verplicht
-- Input validatie server-side
+- Altijd try-catch voor error handling
+- Geparametriseerde SQL queries zijn verplicht
+- Input validatie op de server
 
 ---
 
 ## 🤝 Bijdragen
 
-Bijdragen zijn welkom! Volg deze stappen:
+Bijdragen zijn welkom! Doe dit als volgt:
 
 1. Fork de repository
 2. Maak een feature branch (`git checkout -b feature/nieuwe-functie`)
-3. Commit je wijzigingen (`git commit -m 'Voeg nieuwe functie toe'`)
+3. Commit je aanpassingen (`git commit -m 'Voeg nieuwe functie toe'`)
 4. Push naar de branch (`git push origin feature/nieuwe-functie`)
 5. Open een Pull Request
 
@@ -216,12 +216,12 @@ Dit project is gelicentieerd onder de MIT Licentie - zie het [LICENSE](LICENSE) 
 
 ## ⚠️ Disclaimer
 
-TrustBox is een educatief project. Voor productiegebruik:
+TrustBox is een educatief project. Voor gebruik in productie:
 - ✅ Gebruik sterke, unieke encryptiesleutels
-- ✅ Implementeer HTTPS/SSL certificaten
-- ✅ Configureer firewall regels
-- ✅ Voer regelmatige security audits uit
-- ✅ Maak back-ups van je database
+- ✅ Installeer HTTPS/SSL certificaten
+- ✅ Configureer firewall rules
+- ✅ Doe regelmatig security audits
+- ✅ Maak back-ups van de database
 - ✅ Houd dependencies up-to-date
 
 ---

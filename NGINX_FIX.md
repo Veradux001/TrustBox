@@ -1,54 +1,54 @@
-# Nginx Configuration Fix
+# Nginx Configuratie Fix
 
-## Problem
+## Probleem
 
-The error "Cannot POST /login" occurs because Nginx is stripping the `/api` prefix when forwarding requests to the Node.js backend.
+De error "Cannot POST /login" komt doordat Nginx de `/api` prefix weghaalt wanneer requests naar de Node.js backend worden doorgestuurd.
 
-## Root Cause
+## Oorzaak
 
-Nginx configuration with trailing slashes strips the `/api` prefix:
+Nginx configuratie met trailing slashes haalt de `/api` prefix weg:
 
 ```nginx
-# INCORRECT CONFIGURATION
+# INCORRECTE CONFIGURATIE
 location /api/ {
     proxy_pass http://localhost:3000/;
 }
 ```
 
-When a request comes in as `/api/login`, Nginx removes `/api` and forwards only `/login` to the backend, but the backend expects `/api/login`.
+Als een request binnenkomt als `/api/login`, verwijdert Nginx `/api` en stuurt alleen `/login` door naar de backend, maar de backend verwacht `/api/login`.
 
-## Solution
+## Oplossing
 
-### Step 1: Locate Nginx Configuration
+### Stap 1: Zoek Nginx Configuratie
 
 ```bash
-# Common locations:
+# Veelvoorkomende locaties:
 /etc/nginx/sites-available/trustbox.diemitchell.com
 /etc/nginx/conf.d/trustbox.diemitchell.com.conf
 /etc/nginx/nginx.conf
 ```
 
-### Step 2: Edit the Configuration
+### Stap 2: Bewerk de Configuratie
 
 ```bash
 sudo nano /etc/nginx/sites-available/trustbox.diemitchell.com
 ```
 
-### Step 3: Remove Trailing Slashes
+### Stap 3: Verwijder Trailing Slashes
 
-Change:
+Verander dit:
 ```nginx
 location /api/ {
     proxy_pass http://localhost:3000/;
 ```
 
-To:
+Naar dit:
 ```nginx
 location /api {
     proxy_pass http://localhost:3000;
 ```
 
-### Complete Correct Configuration
+### Complete Correcte Configuratie
 
 ```nginx
 server {
@@ -58,14 +58,14 @@ server {
     ssl_certificate /path/to/certificate.crt;
     ssl_certificate_key /path/to/private.key;
 
-    # Frontend - serve static files
+    # Frontend - statische bestanden
     location / {
         root /path/to/TrustBox;
         index loginV3.html mvpV3.html;
         try_files $uri $uri/ =404;
     }
 
-    # Backend API - preserve /api prefix
+    # Backend API - behoud /api prefix
     location /api {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -80,17 +80,17 @@ server {
 }
 ```
 
-### Step 4: Test and Reload Nginx
+### Stap 4: Test en Herlaad Nginx
 
 ```bash
-# Test configuration
+# Test configuratie
 sudo nginx -t
 
-# Reload Nginx
+# Herlaad Nginx
 sudo systemctl reload nginx
 ```
 
-### Step 5: Verify the Fix
+### Stap 5: Controleer of de Fix Werkt
 
 ```bash
 curl -X POST https://trustbox.diemitchell.com/api/login \
@@ -98,31 +98,31 @@ curl -X POST https://trustbox.diemitchell.com/api/login \
   -d '{"email":"test@example.com","password":"test"}'
 ```
 
-You should get a JSON response, NOT "Cannot POST /login".
+Je zou een JSON response moeten krijgen, NIET "Cannot POST /login".
 
-## How proxy_pass Works
+## Hoe proxy_pass Werkt
 
-### With Trailing Slashes (WRONG)
+### Met Trailing Slashes (FOUT)
 ```nginx
 location /api/ {
     proxy_pass http://localhost:3000/;
 }
 ```
-- Request: `/api/login` → Backend receives: `/login` ❌
+- Request: `/api/login` → Backend krijgt: `/login` ❌
 
-### Without Trailing Slashes (CORRECT)
+### Zonder Trailing Slashes (GOED)
 ```nginx
 location /api {
     proxy_pass http://localhost:3000;
 }
 ```
-- Request: `/api/login` → Backend receives: `/api/login` ✅
+- Request: `/api/login` → Backend krijgt: `/api/login` ✅
 
 ## Troubleshooting
 
-### Still Getting "Cannot POST /login"?
+### Krijg Je Nog Steeds "Cannot POST /login"?
 
-**Check if Nginx reloaded:**
+**Check of Nginx herladen is:**
 ```bash
 sudo systemctl status nginx
 sudo nginx -T | grep -A 10 "location /api"
@@ -133,23 +133,23 @@ sudo nginx -T | grep -A 10 "location /api"
 sudo tail -f /var/log/nginx/error.log
 ```
 
-**Check Node.js backend is running:**
+**Check of Node.js backend draait:**
 ```bash
-# If using PM2
+# Als je PM2 gebruikt
 pm2 status
 pm2 logs trustbox
 
-# If using systemd
+# Als je systemd gebruikt
 sudo systemctl status trustbox.service
 ```
 
-**Verify backend routes:**
+**Controleer backend routes:**
 ```bash
 curl http://localhost:3000/api/login
-# Should NOT return "Cannot POST /login"
+# Zou NIET "Cannot POST /login" moeten returnen
 ```
 
-**Find active configuration:**
+**Zoek actieve configuratie:**
 ```bash
 sudo nginx -T
 sudo find /etc/nginx -name "*.conf" -o -name "*trustbox*"

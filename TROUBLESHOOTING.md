@@ -1,118 +1,118 @@
-# Troubleshooting Guide
+# Troubleshooting Handleiding
 
 ## Error: "Fout bij opslaan: Fout bij het opslaan van data op de server"
 
-This error occurs when trying to save a new login. Check server logs to diagnose:
+Deze error gebeurt als je een nieuwe login probeert op te slaan. Check de server logs om te kijken wat er mis gaat:
 
 ```bash
-# If using PM2
+# Als je PM2 gebruikt
 pm2 logs trustbox
 
-# If using systemd
+# Als je systemd gebruikt
 sudo journalctl -u trustbox.service -f
 ```
 
-## Common Issues
+## Veelvoorkomende Problemen
 
-### Issue 1: CORS Error
+### Probleem 1: CORS Error
 
 **Error in logs:**
 ```
 CORS geblokkeerd voor origin: https://trustbox.diemitchell.com
 ```
 
-**Fix:**
-1. Edit `backend/.env`:
+**Oplossing:**
+1. Pas `backend/.env` aan:
    ```
    ALLOWED_ORIGINS=http://localhost:3000,https://trustbox.diemitchell.com
    ```
 
-2. Restart the server:
+2. Herstart de server:
    ```bash
    pm2 restart trustbox
-   # or
+   # of
    sudo systemctl restart trustbox.service
    ```
 
-### Issue 2: Missing or Invalid Encryption Key
+### Probleem 2: Encryptiesleutel Ontbreekt of is Fout
 
 **Error in logs:**
 ```
 ENCRYPTION_KEY is niet ingesteld in omgevingsvariabelen
 ```
 
-**Fix:**
-1. Generate a new key:
+**Oplossing:**
+1. Genereer een nieuwe key:
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
-2. Add to `backend/.env`:
+2. Voeg toe aan `backend/.env`:
    ```
-   ENCRYPTION_KEY=your_64_character_hex_key_here
+   ENCRYPTION_KEY=jouw_64_character_hex_key_hier
    ```
 
-3. Restart the server
+3. Herstart de server
 
-### Issue 3: Database Connection Error
+### Probleem 3: Database Verbinding Error
 
 **Error in logs:**
 ```
 Database pool is niet beschikbaar
 ```
-or
+of
 ```
 FATALE FOUT: Databaseverbinding is mislukt
 ```
 
-**Fix:**
+**Oplossing:**
 1. Check database credentials in `backend/.env`:
    ```
-   DB_USER=your_database_user
-   DB_PASSWORD=your_database_password
-   DB_SERVER=your_database_server_ip
+   DB_USER=jouw_database_gebruiker
+   DB_PASSWORD=jouw_database_wachtwoord
+   DB_SERVER=jouw_database_server_ip
    DB_DATABASE_SUBMISSION=FormSubmissionDB
    DB_DATABASE_REGISTER=UserRegistrationDB
    DB_ENCRYPT=false
    DB_TRUST_SERVER_CERTIFICATE=true
    ```
 
-2. Test database connectivity:
+2. Test database connectiviteit:
    ```bash
    # Ping database server
-   ping your_database_server_ip
+   ping jouw_database_server_ip
 
-   # Try to connect
-   sqlcmd -S your_database_server_ip -U your_database_user -P your_database_password
+   # Probeer te verbinden
+   sqlcmd -S jouw_database_server_ip -U jouw_database_gebruiker -P jouw_database_wachtwoord
    ```
 
-3. Check firewall rules (port 1433 must be open)
+3. Check firewall regels (poort 1433 moet open zijn)
 
-4. Restart the server
+4. Herstart de server
 
-### Issue 4: Duplicate GroupId
+### Probleem 4: Dubbele GroupId
 
 **Error in logs:**
 ```
 Er bestaat al een record met dit GroupId
 ```
 
-**Fix:**
-Use the "Bijwerken" (Update) button instead of "Opslaan" (Save) to update an existing record, or delete the old record first.
+**Oplossing:**
+Gebruik de "Bijwerken" knop in plaats van "Opslaan" om een bestaand record te updaten, of verwijder eerst het oude record.
 
-### Issue 5: Database Schema Mismatch
+### Probleem 5: Database Schema Klopt Niet
 
 **Error in logs:**
 ```
 Invalid column name ...
 ```
-or
+of
 ```
 Cannot insert the value NULL into column ...
 ```
 
-**Fix:**
-Ensure your `FormSubmission` table has the correct structure:
+**Oplossing:**
+Zorg dat je `FormSubmission` tabel de juiste structuur heeft:
 ```sql
 CREATE TABLE FormSubmission (
     UserId INT NOT NULL,
@@ -126,34 +126,34 @@ CREATE TABLE FormSubmission (
 );
 ```
 
-If upgrading from an older version without `UserId`:
+Als je upgrade van een oudere versie zonder `UserId`:
 ```sql
--- Add UserId column
+-- Voeg UserId kolom toe
 ALTER TABLE FormSubmission ADD UserId INT NULL;
 
--- Update existing records with a valid UserId
+-- Update bestaande records met een geldige UserId
 UPDATE FormSubmission SET UserId = 1 WHERE UserId IS NULL;
 
--- Make column NOT NULL
+-- Maak kolom verplicht
 ALTER TABLE FormSubmission ALTER COLUMN UserId INT NOT NULL;
 
--- Add index
+-- Voeg index toe
 CREATE INDEX IDX_FormSubmission_UserId ON FormSubmission(UserId);
 ```
 
-## Quick Diagnostic Checklist
+## Snelle Diagnostiek Checklist
 
-- [ ] Check server logs for specific error messages
-- [ ] Verify `ALLOWED_ORIGINS` includes your production domain
-- [ ] Verify `ENCRYPTION_KEY` exists and is 64 hex characters
-- [ ] Verify database connection credentials are correct
-- [ ] Verify the server can reach the database server
-- [ ] Restart the Node.js server after making changes
-- [ ] Clear browser cache and try again
+- [ ] Check server logs voor specifieke error berichten
+- [ ] Controleer of `ALLOWED_ORIGINS` je productie domein bevat
+- [ ] Controleer of `ENCRYPTION_KEY` bestaat en 64 hex characters is
+- [ ] Controleer of database credentials kloppen
+- [ ] Controleer of de server de database server kan bereiken
+- [ ] Herstart de Node.js server na wijzigingen
+- [ ] Clear browser cache en probeer opnieuw
 
-## Testing After Fix
+## Testen Na Fix
 
-Test with curl:
+Test met curl:
 
 ```bash
 curl -X POST https://trustbox.diemitchell.com/api/saveData \
@@ -167,15 +167,15 @@ curl -X POST https://trustbox.diemitchell.com/api/saveData \
   }'
 ```
 
-**Expected responses:**
+**Verwachte responses:**
 - **Success:** `{"message":"Data voor Groep 999 succesvol opgeslagen..."}`
-- **CORS Error:** No response or CORS-related error
+- **CORS Error:** Geen response of CORS-gerelateerde error
 - **Database Error:** `{"message":"Database niet beschikbaar..."}`
 - **Duplicate:** `{"message":"Er bestaat al een record met dit GroupId..."}`
 
-## Still Having Issues?
+## Nog Steeds Problemen?
 
-1. **Enable debug mode:**
+1. **Zet debug mode aan:**
    ```bash
    DEBUG=* node backend/serverV2.js
    ```
@@ -185,13 +185,13 @@ curl -X POST https://trustbox.diemitchell.com/api/saveData \
    sudo tail -f /var/log/nginx/error.log
    ```
 
-3. **Verify correct server file:**
+3. **Controleer of het juiste server bestand draait:**
    ```bash
    ps aux | grep node
-   # Should show "serverV2.js", NOT "InsertRegistration.js"
+   # Zou "serverV2.js" moeten tonen, NIET "InsertRegistration.js"
    ```
 
 4. **Check browser console:**
    - Open Developer Tools (F12)
-   - Go to Console tab
-   - Try saving again and note any errors
+   - Ga naar Console tab
+   - Probeer opnieuw op te slaan en kijk naar errors

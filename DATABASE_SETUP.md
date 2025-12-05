@@ -1,57 +1,58 @@
 # Database Setup Guide
 
-This guide provides SQL commands to set up the TrustBox database schema on Microsoft SQL Server.
+Deze handleiding laat zien hoe je de TrustBox database opzet op Microsoft SQL Server.
 
-**Prerequisites:** Microsoft SQL Server must be installed and running.
+**Vereisten:** Microsoft SQL Server moet geïnstalleerd zijn en draaien.
 
-## Table of Contents
+## Inhoudsopgave
 
-1. [Connecting to SQL Server](#connecting-to-sql-server)
-2. [Creating Databases](#creating-databases)
-3. [Creating Tables](#creating-tables)
-4. [Setting Up Database Users](#setting-up-database-users)
-5. [Verifying the Setup](#verifying-the-setup)
-6. [Maintenance](#maintenance)
-7. [Troubleshooting](#troubleshooting)
+1. [Verbinden met SQL Server](#verbinden-met-sql-server)
+2. [Databases Aanmaken](#databases-aanmaken)
+3. [Tabellen Aanmaken](#tabellen-aanmaken)
+4. [Database Gebruikers Instellen](#database-gebruikers-instellen)
+5. [Setup Controleren](#setup-controleren)
+6. [Database Migrations](#database-migrations)
+7. [Onderhoud](#onderhoud)
+8. [Troubleshooting](#troubleshooting)
 
-## Connecting to SQL Server
+## Verbinden met SQL Server
 
-### Using SQL Server Management Studio (Windows)
-- **Server name:** `localhost` or `.`
-- **Authentication:** Windows Authentication or SQL Server Authentication
-- **Login:** `sa` (if using SQL Server Authentication)
+### Met SQL Server Management Studio (Windows)
+- **Server naam:** `localhost` of `.`
+- **Authenticatie:** Windows Authentication of SQL Server Authentication
+- **Login:** `sa` (als je SQL Server Authentication gebruikt)
 
-### Using sqlcmd (Command Line)
+### Met sqlcmd (Command Line)
 ```bash
-sqlcmd -S localhost -U sa -P 'YourPassword' -C
+sqlcmd -S localhost -U sa -P 'JouwWachtwoord' -C
 ```
 
-**Note:** The `-C` flag trusts the server certificate (for development).
+**Let op:** De `-C` flag vertrouwt het server certificaat (voor development).
 
-## Creating Databases
+## Databases Aanmaken
 
-TrustBox requires **two separate databases** for security isolation:
+TrustBox heeft **twee aparte databases** nodig voor beveiliging:
 
-1. **UserRegistrationDB** - Stores user accounts with bcrypt-hashed passwords
-2. **FormSubmissionDB** - Stores AES-256 encrypted credentials
+1. **UserRegistrationDB** - Slaat gebruikersaccounts op met bcrypt-gehashte wachtwoorden
+2. **FormSubmissionDB** - Slaat AES-256 versleutelde credentials op
 
 ```sql
--- Create databases
+-- Databases aanmaken
 CREATE DATABASE UserRegistrationDB;
 GO
 
 CREATE DATABASE FormSubmissionDB;
 GO
 
--- Verify databases
+-- Databases controleren
 SELECT name, state_desc FROM sys.databases
 WHERE name IN ('UserRegistrationDB', 'FormSubmissionDB');
 GO
 ```
 
-## Creating Tables
+## Tabellen Aanmaken
 
-### User Registration Table
+### User Registration Tabel
 
 ```sql
 USE UserRegistrationDB;
@@ -69,13 +70,13 @@ CREATE TABLE tbl_Users (
 );
 GO
 
--- Create indexes
+-- Indexes aanmaken
 CREATE INDEX IDX_Users_Email ON tbl_Users(Email);
 CREATE INDEX IDX_Users_Username ON tbl_Users(Username);
 GO
 ```
 
-### Form Submission Table
+### Form Submission Tabel
 
 ```sql
 USE FormSubmissionDB;
@@ -97,12 +98,13 @@ CREATE INDEX IDX_FormSubmission_Domain ON FormSubmission(Domain);
 GO
 ```
 
-**Security Notes:**
-- The `Password` column stores **AES-256 encrypted** passwords
-- The composite primary key `(UserId, GroupId)` provides user isolation
-- Each user has their own set of GroupId values (1, 2, 3...) without conflicts
+**Beveiligingsnotities:**
+- De `Password` kolom slaat **AES-256 versleutelde** wachtwoorden op (geen plaintext!)
+- Wachtwoorden worden automatisch versleuteld voordat ze in de database komen
+- De composite primary key `(UserId, GroupId)` zorgt ervoor dat gebruikers gescheiden blijven
+- Elke gebruiker heeft z'n eigen set GroupId waarden (1, 2, 3...) zonder conflicten
 
-### Optional: UserId Validation Trigger
+### Optioneel: UserId Validatie Trigger
 
 ```sql
 USE FormSubmissionDB;
@@ -131,16 +133,16 @@ END;
 GO
 ```
 
-## Setting Up Database Users
+## Database Gebruikers Instellen
 
-**Never use the `sa` account in production.** Create a dedicated database user:
+**Gebruik nooit het `sa` account in productie.** Maak een aparte database gebruiker aan:
 
 ```sql
--- Create login
-CREATE LOGIN trustbox_app WITH PASSWORD = 'YourStrongPassword123!';
+-- Login aanmaken
+CREATE LOGIN trustbox_app WITH PASSWORD = 'JouwSterkWachtwoord123!';
 GO
 
--- Grant access to UserRegistrationDB
+-- Toegang geven tot UserRegistrationDB
 USE UserRegistrationDB;
 GO
 
@@ -149,7 +151,7 @@ ALTER ROLE db_datareader ADD MEMBER trustbox_app;
 ALTER ROLE db_datawriter ADD MEMBER trustbox_app;
 GO
 
--- Grant access to FormSubmissionDB
+-- Toegang geven tot FormSubmissionDB
 USE FormSubmissionDB;
 GO
 
@@ -159,30 +161,30 @@ ALTER ROLE db_datawriter ADD MEMBER trustbox_app;
 GO
 ```
 
-### Update Application Configuration
+### Applicatie Configuratie Aanpassen
 
-Update `backend/.env`:
+Pas `backend/.env` aan:
 ```env
 DB_USER=trustbox_app
-DB_PASSWORD=YourStrongPassword123!
+DB_PASSWORD=JouwSterkWachtwoord123!
 DB_SERVER=localhost
 DB_DATABASE_SUBMISSION=FormSubmissionDB
 DB_DATABASE_REGISTER=UserRegistrationDB
 ```
 
-## Verifying the Setup
+## Setup Controleren
 
-### Check Tables and Data
+### Tabellen en Data Checken
 
 ```sql
--- Check UserRegistrationDB
+-- Controleer UserRegistrationDB
 USE UserRegistrationDB;
 GO
 SELECT name FROM sys.tables;
 SELECT COUNT(*) AS UserCount FROM tbl_Users;
 GO
 
--- Check FormSubmissionDB
+-- Controleer FormSubmissionDB
 USE FormSubmissionDB;
 GO
 SELECT name FROM sys.tables;
@@ -190,55 +192,126 @@ SELECT COUNT(*) AS RecordCount FROM FormSubmission;
 GO
 ```
 
-### Test Connection from Application
+### Test Verbinding vanuit de Applicatie
 
-Create `backend/test-db-connection.js`:
+Maak een bestand `backend/test-db-connection.js` aan:
 ```javascript
 require('dotenv').config();
 const sql = require('mssql');
 
-const config = {
-    user: process.env.DB_USER || 'sa',
-    password: process.env.DB_PASSWORD,
-    server: process.env.DB_SERVER || 'localhost',
-    database: 'UserRegistrationDB',
-    options: {
-        encrypt: process.env.DB_ENCRYPT === 'true',
-        trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true'
-    }
-};
+async function testDatabaseConnection(dbName) {
+    const config = {
+        user: process.env.DB_USER || 'sa',
+        password: process.env.DB_PASSWORD,
+        server: process.env.DB_SERVER || 'localhost',
+        database: dbName,
+        options: {
+            encrypt: process.env.DB_ENCRYPT === 'true',
+            trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true'
+        }
+    };
 
-async function testConnection() {
     try {
-        console.log('Testing connection...');
+        console.log(`Testing ${dbName} connection...`);
         const pool = await sql.connect(config);
-        console.log('✅ Connection successful!');
+        console.log(`✅ ${dbName} connection successful!`);
 
         const result = await pool.request().query('SELECT @@VERSION');
         console.log('SQL Server Version:', result.recordset[0]);
 
         await pool.close();
+        return true;
     } catch (err) {
-        console.error('❌ Connection failed:', err.message);
+        console.error(`❌ ${dbName} connection failed:`, err.message);
+        return false;
+    }
+}
+
+async function testAllConnections() {
+    console.log('Testing database connections...\n');
+
+    const userDbSuccess = await testDatabaseConnection('UserRegistrationDB');
+    console.log('');
+    const formDbSuccess = await testDatabaseConnection('FormSubmissionDB');
+
+    if (userDbSuccess && formDbSuccess) {
+        console.log('\n✅ All database connections successful!');
+        process.exit(0);
+    } else {
+        console.log('\n❌ Some database connections failed.');
         process.exit(1);
     }
 }
 
-testConnection();
+testAllConnections();
 ```
 
-Run the test:
+Voer de test uit:
 ```bash
 cd backend
 node test-db-connection.js
 ```
 
-## Maintenance
+## Database Migrations
+
+Als je een bestaande TrustBox installatie upgrade naar een nieuwere versie, kan het zijn dat je database aanpassingen moet maken.
+
+### Toevoegen van UserId kolom (voor oude installaties)
+
+Als je database nog geen `UserId` kolom heeft in de `FormSubmission` tabel:
+
+```sql
+USE FormSubmissionDB;
+GO
+
+-- Voeg UserId kolom toe
+ALTER TABLE FormSubmission ADD UserId INT NULL;
+GO
+
+-- Update bestaande records met een geldige UserId
+-- Let op: pas de UserId waarde aan naar je eigen gebruiker ID
+UPDATE FormSubmission SET UserId = 1 WHERE UserId IS NULL;
+GO
+
+-- Maak kolom verplicht
+ALTER TABLE FormSubmission ALTER COLUMN UserId INT NOT NULL;
+GO
+
+-- Verwijder oude primary key
+ALTER TABLE FormSubmission DROP CONSTRAINT PK_FormSubmission;
+GO
+
+-- Voeg nieuwe composite primary key toe
+ALTER TABLE FormSubmission ADD CONSTRAINT PK_FormSubmission_UserId_GroupId PRIMARY KEY (UserId, GroupId);
+GO
+
+-- Voeg index toe voor betere performance
+CREATE INDEX IDX_FormSubmission_UserId ON FormSubmission(UserId);
+GO
+```
+
+### Controleren van database schema versie
+
+```sql
+-- Check of UserId kolom bestaat
+SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'FormSubmission' AND COLUMN_NAME = 'UserId';
+GO
+
+-- Check primary key structuur
+SELECT CONSTRAINT_NAME, COLUMN_NAME
+FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+WHERE TABLE_NAME = 'FormSubmission';
+GO
+```
+
+## Onderhoud
 
 ### Database Backup
 
 ```sql
--- Backup UserRegistrationDB (adjust path for your OS)
+-- Backup UserRegistrationDB (pas het pad aan voor jouw OS)
 BACKUP DATABASE UserRegistrationDB
 TO DISK = 'C:\Backups\UserRegistrationDB.bak'
 WITH FORMAT, INIT, NAME = 'Full Backup';
@@ -251,10 +324,10 @@ WITH FORMAT, INIT, NAME = 'Full Backup';
 GO
 ```
 
-### Index Maintenance
+### Index Onderhoud
 
 ```sql
--- Rebuild indexes
+-- Indexes rebuilden
 USE UserRegistrationDB;
 ALTER INDEX ALL ON tbl_Users REBUILD;
 GO
@@ -263,7 +336,7 @@ USE FormSubmissionDB;
 ALTER INDEX ALL ON FormSubmission REBUILD;
 GO
 
--- Check fragmentation
+-- Fragmentatie checken
 SELECT
     OBJECT_NAME(i.object_id) AS TableName,
     i.name AS IndexName,
@@ -274,7 +347,7 @@ WHERE s.avg_fragmentation_in_percent > 10;
 GO
 ```
 
-### Update Statistics
+### Statistics Updaten
 
 ```sql
 USE UserRegistrationDB;
@@ -288,38 +361,38 @@ GO
 
 ## Troubleshooting
 
-### Database Does Not Exist
+### Database Bestaat Niet
 ```sql
--- Check if databases exist
+-- Controleer of databases bestaan
 SELECT name, state_desc FROM sys.databases
 WHERE name IN ('UserRegistrationDB', 'FormSubmissionDB');
 GO
 
--- Create if missing
+-- Aanmaken als ze ontbreken
 CREATE DATABASE UserRegistrationDB;
 CREATE DATABASE FormSubmissionDB;
 GO
 ```
 
-### Login Failed
+### Login Mislukt
 ```sql
--- Check if login exists and is enabled
+-- Controleer of login bestaat en actief is
 SELECT name, type_desc, is_disabled FROM sys.server_principals
 WHERE name = 'trustbox_app';
 GO
 
--- Enable if disabled
+-- Activeer als hij uitgeschakeld is
 ALTER LOGIN trustbox_app ENABLE;
 GO
 
--- Reset password
-ALTER LOGIN trustbox_app WITH PASSWORD = 'NewPassword123!';
+-- Reset wachtwoord
+ALTER LOGIN trustbox_app WITH PASSWORD = 'NieuwWachtwoord123!';
 GO
 ```
 
-### Permission Denied
+### Geen Rechten
 ```sql
--- Check permissions
+-- Rechten checken
 USE UserRegistrationDB;
 GO
 
@@ -330,51 +403,51 @@ LEFT JOIN sys.database_principals r ON drm.role_principal_id = r.principal_id
 WHERE dp.name = 'trustbox_app';
 GO
 
--- Grant permissions
+-- Rechten geven
 ALTER ROLE db_datareader ADD MEMBER trustbox_app;
 ALTER ROLE db_datawriter ADD MEMBER trustbox_app;
 GO
 ```
 
-### Cannot Connect
+### Kan Niet Verbinden
 ```bash
-# Check if SQL Server is running (Linux)
+# Check of SQL Server draait (Linux)
 systemctl status mssql-server
 
-# Check if SQL Server is running (Windows)
+# Check of SQL Server draait (Windows)
 Get-Service MSSQLSERVER
 
-# Test connectivity
-sqlcmd -S localhost -U sa -P 'YourPassword' -Q "SELECT @@VERSION"
+# Test connectiviteit
+sqlcmd -S localhost -U sa -P 'JouwWachtwoord' -Q "SELECT @@VERSION"
 ```
 
-## Quick Reference
+## Snelle Referentie
 
 ```sql
--- List all databases
+-- Alle databases tonen
 SELECT name FROM sys.databases ORDER BY name;
 
--- List all tables
+-- Alle tabellen tonen
 SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';
 
--- Count rows
+-- Rijen tellen
 SELECT COUNT(*) FROM tbl_Users;
 SELECT COUNT(*) FROM FormSubmission;
 
--- Check server version
+-- Server versie checken
 SELECT @@VERSION;
 
--- Check current database
+-- Huidige database checken
 SELECT DB_NAME();
 ```
 
-## Next Steps
+## Volgende Stappen
 
-1. ✅ Configure application - Update `backend/.env`
-2. ✅ Generate encryption key - Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-3. ✅ Test connection - Run `node backend/test-db-connection.js`
+1. ✅ Configureer applicatie - Pas `backend/.env` aan
+2. ✅ Genereer encryptiesleutel - Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+3. ✅ Test verbinding - Run `node backend/test-db-connection.js`
 4. ✅ Start backend - Run `cd backend && npm start`
-5. ✅ Test registration and login
-6. ✅ Test password storage
+5. ✅ Test registratie en login
+6. ✅ Test wachtwoord opslag
 
-**Need help?** Open an issue on the [GitHub repository](https://github.com/Veradux001/TrustBox/issues).
+**Hulp nodig?** Open een issue op de [GitHub repository](https://github.com/Veradux001/TrustBox/issues).
