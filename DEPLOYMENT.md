@@ -1,61 +1,52 @@
-# TrustBox Deployment Guide
+# Deployment Handleiding
 
-## Production Server Setup
+## Belangrijk: Gebruik serverV2.js
 
-### Important: Use serverV2.js, NOT InsertRegistration.js
+De productieserver **moet** `serverV2.js` draaien, want die heeft alle API endpoints:
+- `/login` - Gebruiker authenticatie
+- `/register` - Gebruiker registratie
+- `/getData` - Wachtwoorden ophalen
+- `/saveData` - Wachtwoorden opslaan
+- `/data/:groupId` - Wachtwoorden bijwerken/verwijderen
 
-The production server **must** run `serverV2.js` which contains all API endpoints including:
-- `/login` - User authentication
-- `/register` - User registration  
-- `/getData` - Retrieve passwords
-- `/saveData` - Save passwords
-- `/data/:groupId` - Update/delete passwords
+**GEBRUIK GEEN `InsertRegistration.js`** - dit is een oud bestand met alleen het `/register` endpoint.
 
-**DO NOT use `InsertRegistration.js`** - this is a legacy file that only has the `/register` endpoint.
+## Startup Commando's
 
-### Correct Startup Commands
-
-#### Using npm (recommended):
+### Met npm (aanbevolen)
 ```bash
 cd backend
 npm start
 ```
 
-#### Using nodemon for development:
+### Met nodemon voor development
 ```bash
 cd backend
 npm run dev
 ```
 
-#### Direct node command:
+### Direct node commando
 ```bash
 cd backend
 node serverV2.js
 ```
 
-#### With nodemon and legacy watch:
-```bash
-cd backend
-npx nodemon --legacy-watch --ignore 'node_modules/*' --watch /usr/src/app --ext js,ts,json --exec 'node serverV2.js'
-```
+## Docker/Container Setup
 
-### Docker/Container Setup
-
-If running in a Docker container, ensure your startup command uses `serverV2.js`:
+Zorg dat je startup commando `serverV2.js` gebruikt:
 
 ```bash
-sh -c "cd /usr/src/app && npm install && npm install --save-dev nodemon && npx nodemon --legacy-watch --ignore 'node_modules/*' --watch /usr/src/app --ext js,ts,json --exec 'node serverV2.js'"
+cd /usr/src/app && npm install && node serverV2.js
 ```
 
-**NOT:**
+Voor development met nodemon:
 ```bash
-# ❌ WRONG - This only has /register endpoint
---exec 'node InsertRegistration.js'
+cd /usr/src/app && npm install && npx nodemon --legacy-watch serverV2.js
 ```
 
-### Verifying the Server is Running Correctly
+## Server Controleren
 
-Test that all endpoints are accessible:
+Test of alle endpoints werken:
 
 ```bash
 # Test login endpoint
@@ -63,20 +54,15 @@ curl -X POST https://trustbox.diemitchell.com/api/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@test.com","password":"test"}'
 
-# Should return authentication error, NOT "Cannot POST /login"
-
-# Test register endpoint  
-curl -X POST https://trustbox.diemitchell.com/api/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","email":"test@test.com","password":"Test123!"}'
+# Zou een authentication error moeten geven, NIET "Cannot POST /login"
 ```
 
-### Common Issues
+## Troubleshooting
 
-**Problem:** Getting "Cannot POST /login" error
-**Cause:** Server is running `InsertRegistration.js` instead of `serverV2.js`
-**Solution:** Change startup command to use `serverV2.js`
+**Probleem:** Je krijgt "Cannot POST /login" error
+**Oorzaak:** Server draait `InsertRegistration.js` in plaats van `serverV2.js`
+**Oplossing:** Verander het startup commando naar `serverV2.js` en herstart
 
-**Problem:** Endpoints work locally but not in production
-**Cause:** Production server hasn't been restarted after code update
-**Solution:** Restart the Node.js process (pm2 restart, systemctl restart, etc.)
+**Probleem:** Endpoints werken lokaal maar niet in productie
+**Oorzaak:** Productieserver is niet herstart na code update
+**Oplossing:** Herstart het Node.js proces (pm2 restart, systemctl restart, etc.)

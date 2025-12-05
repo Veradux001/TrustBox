@@ -1,93 +1,63 @@
-# MSSQL Server Database Setup Guide - TrustBox
+# Database Setup Guide
 
-This guide provides SQL commands to set up the TrustBox database schema on an existing Microsoft SQL Server installation.
+Deze handleiding laat zien hoe je de TrustBox database opzet op Microsoft SQL Server.
 
-**Prerequisites:** Microsoft SQL Server must be installed and running on your system.
+**Vereisten:** Microsoft SQL Server moet geïnstalleerd zijn en draaien.
 
----
+## Inhoudsopgave
 
-## Table of Contents
-
-1. [Connecting to SQL Server](#connecting-to-sql-server)
-2. [Creating Databases](#creating-databases)
-3. [Creating Tables](#creating-tables)
-4. [Setting Up Database Users](#setting-up-database-users)
-5. [Verifying the Setup](#verifying-the-setup)
-6. [User Isolation & Security](#user-isolation--security)
-7. [Maintenance & Backup](#maintenance--backup)
+1. [Verbinden met SQL Server](#verbinden-met-sql-server)
+2. [Databases Aanmaken](#databases-aanmaken)
+3. [Tabellen Aanmaken](#tabellen-aanmaken)
+4. [Database Gebruikers Instellen](#database-gebruikers-instellen)
+5. [Setup Controleren](#setup-controleren)
+6. [Database Migrations](#database-migrations)
+7. [Onderhoud](#onderhoud)
 8. [Troubleshooting](#troubleshooting)
 
----
+## Verbinden met SQL Server
 
-## Connecting to SQL Server
+### Met SQL Server Management Studio (Windows)
+- **Server naam:** `localhost` of `.`
+- **Authenticatie:** Windows Authentication of SQL Server Authentication
+- **Login:** `sa` (als je SQL Server Authentication gebruikt)
 
-### Using SQL Server Management Studio (SSMS) - Windows
-
-1. Launch SQL Server Management Studio (SSMS)
-2. Connect to your SQL Server instance:
-   - **Server name:** `localhost` or `.` (for local default instance)
-   - **Authentication:** Windows Authentication or SQL Server Authentication
-   - **Login:** `sa` (if using SQL Server Authentication)
-
-### Using sqlcmd - Linux/Windows Command Line
-
+### Met sqlcmd (Command Line)
 ```bash
-# Connect to SQL Server
-sqlcmd -S localhost -U sa -P 'YourPassword' -C
-
-# You should see: 1>
+sqlcmd -S localhost -U sa -P 'JouwWachtwoord' -C
 ```
 
-**Note:** Replace `YourPassword` with your actual SA password. The `-C` flag trusts the server certificate (for development).
+**Let op:** De `-C` flag vertrouwt het server certificaat (voor development).
 
----
+## Databases Aanmaken
 
-## Creating Databases
+TrustBox heeft **twee aparte databases** nodig voor beveiliging:
 
-TrustBox requires **two separate databases** for security isolation:
-
-1. **UserRegistrationDB** - Stores user accounts with bcrypt-hashed passwords
-2. **FormSubmissionDB** - Stores AES-256 encrypted credentials
-
-### SQL Commands
+1. **UserRegistrationDB** - Slaat gebruikersaccounts op met bcrypt-gehashte wachtwoorden
+2. **FormSubmissionDB** - Slaat AES-256 versleutelde credentials op
 
 ```sql
--- Create UserRegistrationDB
+-- Databases aanmaken
 CREATE DATABASE UserRegistrationDB;
 GO
 
--- Create FormSubmissionDB
 CREATE DATABASE FormSubmissionDB;
 GO
 
--- Verify databases were created
-SELECT name, database_id, create_date, state_desc
-FROM sys.databases
+-- Databases controleren
+SELECT name, state_desc FROM sys.databases
 WHERE name IN ('UserRegistrationDB', 'FormSubmissionDB');
 GO
 ```
 
-**Expected Output:**
-```
-name                  database_id  create_date              state_desc
-UserRegistrationDB    5            2025-12-04 10:30:00      ONLINE
-FormSubmissionDB      6            2025-12-04 10:30:00      ONLINE
-```
+## Tabellen Aanmaken
 
----
-
-## Creating Tables
-
-### Table 1: User Registration Table
-
-Stores user account information with bcrypt-hashed passwords.
+### User Registration Tabel
 
 ```sql
--- Switch to UserRegistrationDB
 USE UserRegistrationDB;
 GO
 
--- Create tbl_Users table
 CREATE TABLE tbl_Users (
     UserId INT IDENTITY(1,1) PRIMARY KEY,
     Username NVARCHAR(50) UNIQUE NOT NULL,
@@ -100,45 +70,18 @@ CREATE TABLE tbl_Users (
 );
 GO
 
--- Create indexes for faster queries
+-- Indexes aanmaken
 CREATE INDEX IDX_Users_Email ON tbl_Users(Email);
-GO
-
 CREATE INDEX IDX_Users_Username ON tbl_Users(Username);
-GO
-
--- Verify table structure
-SELECT
-    COLUMN_NAME,
-    DATA_TYPE,
-    CHARACTER_MAXIMUM_LENGTH,
-    IS_NULLABLE
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = 'tbl_Users'
-ORDER BY ORDINAL_POSITION;
 GO
 ```
 
-**Column Descriptions:**
-- `UserId` - Auto-incrementing primary key
-- `Username` - Unique username (3-50 characters)
-- `Email` - Unique email address for login
-- `PasswordHash` - Bcrypt hash (60 characters)
-- `AuthorizedPerson` - Optional authorized contact name
-- `AuthorizedEmail` - Optional authorized contact email
-- `CreatedAt` - Account creation timestamp
-- `LastModified` - Last modification timestamp
-
-### Table 2: Form Submission Table
-
-Stores encrypted credentials with user isolation.
+### Form Submission Tabel
 
 ```sql
--- Switch to FormSubmissionDB
 USE FormSubmissionDB;
 GO
 
--- Create FormSubmission table
 CREATE TABLE FormSubmission (
     UserId INT NOT NULL,
     GroupId INT NOT NULL,
@@ -147,807 +90,364 @@ CREATE TABLE FormSubmission (
     Domain NVARCHAR(255) NOT NULL,
     CreatedAt DATETIME2 DEFAULT GETDATE(),
     LastModified DATETIME2 DEFAULT GETDATE(),
-    -- Composite primary key to allow different users to have the same GroupId values
-    -- Column order (UserId, GroupId) optimized for query performance (all queries filter by UserId first)
     CONSTRAINT PK_FormSubmission_UserId_GroupId PRIMARY KEY (UserId, GroupId)
 );
 GO
 
--- Create index for domain-based lookups
 CREATE INDEX IDX_FormSubmission_Domain ON FormSubmission(Domain);
-GO
-
--- Verify table structure
-SELECT
-    COLUMN_NAME,
-    DATA_TYPE,
-    CHARACTER_MAXIMUM_LENGTH,
-    IS_NULLABLE
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = 'FormSubmission'
-ORDER BY ORDINAL_POSITION;
 GO
 ```
 
-**Column Descriptions:**
-- `UserId` - Foreign key linking to UserRegistrationDB (enforced at application level, first part of composite primary key)
-- `GroupId` - User-defined identifier (unique per user within their own data set, second part of composite primary key)
-- `Username` - Stored username for the service
-- `Password` - **AES-256 encrypted** password (not plaintext!)
-- `Domain` - Service/website domain (e.g., "gmail.com")
-- `CreatedAt` - Record creation timestamp
-- `LastModified` - Last update timestamp
+**Beveiligingsnotities:**
+- De `Password` kolom slaat **AES-256 versleutelde** wachtwoorden op (geen plaintext!)
+- Wachtwoorden worden automatisch versleuteld voordat ze in de database komen
+- De composite primary key `(UserId, GroupId)` zorgt ervoor dat gebruikers gescheiden blijven
+- Elke gebruiker heeft z'n eigen set GroupId waarden (1, 2, 3...) zonder conflicten
 
-**Important Security Notes:**
-- The `Password` column stores **encrypted** passwords using AES-256-CBC encryption
-- The `UserId` column provides user isolation (users can only see their own data)
-- The composite primary key `(UserId, GroupId)` ensures each user can have their own set of GroupId values (1, 2, 3...) without conflicts
-- The primary key column order is optimized for query performance (all queries filter by UserId first)
-- Cross-database foreign keys are not supported in SQL Server, so referential integrity is enforced at the application level
-
-### Optional: Data Validation Trigger
-
-Create a trigger to validate that `UserId` exists in `UserRegistrationDB` before inserting into `FormSubmission`:
+### Optioneel: UserId Validatie Trigger
 
 ```sql
 USE FormSubmissionDB;
 GO
 
--- Create trigger to validate UserId
 CREATE TRIGGER TR_FormSubmission_ValidateUserId
 ON FormSubmission
 AFTER INSERT, UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-
-    DECLARE @UserId INT;
-    DECLARE @Username NVARCHAR(50);
-
+    DECLARE @UserId INT, @Username NVARCHAR(50);
     SELECT @UserId = UserId FROM inserted;
 
-    -- Check if UserId exists in UserRegistrationDB
     EXEC UserRegistrationDB.dbo.sp_executesql
         N'SELECT @Username = Username FROM tbl_Users WHERE UserId = @UserId',
         N'@UserId INT, @Username NVARCHAR(50) OUTPUT',
-        @UserId = @UserId,
-        @Username = @Username OUTPUT;
+        @UserId = @UserId, @Username = @Username OUTPUT;
 
     IF @Username IS NULL
     BEGIN
-        THROW 50001, 'Invalid UserId: User does not exist in UserRegistrationDB', 1;
+        THROW 50001, 'Invalid UserId: User does not exist', 1;
         ROLLBACK TRANSACTION;
     END
 END;
 GO
 ```
 
----
+## Database Gebruikers Instellen
 
-## Setting Up Database Users
-
-For production deployments, **never use the `sa` account** in your application. Create a dedicated database user with limited permissions.
-
-### Step 1: Create SQL Server Login
+**Gebruik nooit het `sa` account in productie.** Maak een aparte database gebruiker aan:
 
 ```sql
--- Create login with strong password
-CREATE LOGIN trustbox_app WITH PASSWORD = 'YourStrongPassword123!';
+-- Login aanmaken
+CREATE LOGIN trustbox_app WITH PASSWORD = 'JouwSterkWachtwoord123!';
 GO
 
--- Verify login was created
-SELECT name, type_desc, create_date, is_disabled
-FROM sys.server_principals
-WHERE name = 'trustbox_app';
-GO
-```
-
-### Step 2: Create Database Users and Grant Permissions
-
-```sql
--- Grant access to UserRegistrationDB
+-- Toegang geven tot UserRegistrationDB
 USE UserRegistrationDB;
 GO
 
 CREATE USER trustbox_app FOR LOGIN trustbox_app;
-GO
-
--- Grant read and write permissions
 ALTER ROLE db_datareader ADD MEMBER trustbox_app;
 ALTER ROLE db_datawriter ADD MEMBER trustbox_app;
 GO
 
--- Verify permissions
-SELECT
-    dp.name AS UserName,
-    r.name AS RoleName
-FROM sys.database_principals dp
-JOIN sys.database_role_members drm ON dp.principal_id = drm.member_principal_id
-JOIN sys.database_principals r ON drm.role_principal_id = r.principal_id
-WHERE dp.name = 'trustbox_app';
-GO
-
--- Grant access to FormSubmissionDB
+-- Toegang geven tot FormSubmissionDB
 USE FormSubmissionDB;
 GO
 
 CREATE USER trustbox_app FOR LOGIN trustbox_app;
-GO
-
--- Grant read and write permissions
 ALTER ROLE db_datareader ADD MEMBER trustbox_app;
 ALTER ROLE db_datawriter ADD MEMBER trustbox_app;
 GO
-
--- Verify permissions
-SELECT
-    dp.name AS UserName,
-    r.name AS RoleName
-FROM sys.database_principals dp
-JOIN sys.database_role_members drm ON dp.principal_id = drm.member_principal_id
-JOIN sys.database_principals r ON drm.role_principal_id = r.principal_id
-WHERE dp.name = 'trustbox_app';
-GO
 ```
 
-### Step 3: Update Application Configuration
+### Applicatie Configuratie Aanpassen
 
-Update your `backend/.env` file with the new credentials:
-
+Pas `backend/.env` aan:
 ```env
 DB_USER=trustbox_app
-DB_PASSWORD=YourStrongPassword123!
+DB_PASSWORD=JouwSterkWachtwoord123!
 DB_SERVER=localhost
 DB_DATABASE_SUBMISSION=FormSubmissionDB
 DB_DATABASE_REGISTER=UserRegistrationDB
 ```
 
----
+## Setup Controleren
 
-## Verifying the Setup
-
-### Check Database Existence
+### Tabellen en Data Checken
 
 ```sql
--- List all databases
-SELECT name, database_id, create_date, state_desc
-FROM sys.databases
-ORDER BY name;
-GO
-```
-
-### Check Table Creation
-
-```sql
--- Verify tables in UserRegistrationDB
+-- Controleer UserRegistrationDB
 USE UserRegistrationDB;
 GO
-
-SELECT
-    t.name AS TableName,
-    SUM(p.rows) AS RowCount,
-    SUM(a.total_pages) * 8 AS TotalSpaceKB
-FROM sys.tables t
-JOIN sys.indexes i ON t.object_id = i.object_id
-JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
-JOIN sys.allocation_units a ON p.partition_id = a.container_id
-WHERE t.name = 'tbl_Users'
-GROUP BY t.name;
+SELECT name FROM sys.tables;
+SELECT COUNT(*) AS UserCount FROM tbl_Users;
 GO
 
--- Verify tables in FormSubmissionDB
+-- Controleer FormSubmissionDB
 USE FormSubmissionDB;
 GO
-
-SELECT
-    t.name AS TableName,
-    SUM(p.rows) AS RowCount,
-    SUM(a.total_pages) * 8 AS TotalSpaceKB
-FROM sys.tables t
-JOIN sys.indexes i ON t.object_id = i.object_id
-JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
-JOIN sys.allocation_units a ON p.partition_id = a.container_id
-WHERE t.name = 'FormSubmission'
-GROUP BY t.name;
+SELECT name FROM sys.tables;
+SELECT COUNT(*) AS RecordCount FROM FormSubmission;
 GO
 ```
 
-### Check Indexes
+### Test Verbinding vanuit de Applicatie
 
-```sql
--- Check indexes on tbl_Users
-USE UserRegistrationDB;
-GO
-
-SELECT
-    i.name AS IndexName,
-    i.type_desc AS IndexType,
-    COL_NAME(ic.object_id, ic.column_id) AS ColumnName
-FROM sys.indexes i
-JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
-WHERE i.object_id = OBJECT_ID('tbl_Users')
-ORDER BY i.name;
-GO
-
--- Check indexes on FormSubmission
-USE FormSubmissionDB;
-GO
-
-SELECT
-    i.name AS IndexName,
-    i.type_desc AS IndexType,
-    COL_NAME(ic.object_id, ic.column_id) AS ColumnName
-FROM sys.indexes i
-JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
-WHERE i.object_id = OBJECT_ID('FormSubmission')
-ORDER BY i.name;
-GO
-```
-
-### Test Connection from Application
-
-Create a test script `test-db-connection.js` in the `backend` directory:
-
+Maak een bestand `backend/test-db-connection.js` aan:
 ```javascript
 require('dotenv').config();
 const sql = require('mssql');
 
-const config = {
-    user: process.env.DB_USER || 'sa',
-    password: process.env.DB_PASSWORD,
-    server: process.env.DB_SERVER || 'localhost',
-    database: 'UserRegistrationDB',
-    options: {
-        encrypt: process.env.DB_ENCRYPT === 'true',
-        trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true'
-    }
-};
+async function testDatabaseConnection(dbName) {
+    const config = {
+        user: process.env.DB_USER || 'sa',
+        password: process.env.DB_PASSWORD,
+        server: process.env.DB_SERVER || 'localhost',
+        database: dbName,
+        options: {
+            encrypt: process.env.DB_ENCRYPT === 'true',
+            trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true'
+        }
+    };
 
-async function testConnection() {
     try {
-        console.log('Testing SQL Server connection...');
-        console.log(`Server: ${config.server}`);
-        console.log(`User: ${config.user}`);
-        console.log(`Database: ${config.database}`);
-
+        console.log(`Testing ${dbName} connection...`);
         const pool = await sql.connect(config);
-        console.log('✅ Connection successful!');
+        console.log(`✅ ${dbName} connection successful!`);
 
-        // Test query
-        const result = await pool.request().query('SELECT @@VERSION as version');
-        console.log('SQL Server Version:', result.recordset[0].version);
-
-        // Check tables
-        const tables = await pool.request().query(`
-            SELECT TABLE_NAME
-            FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_TYPE = 'BASE TABLE'
-        `);
-        console.log('\n✅ Tables in UserRegistrationDB:');
-        tables.recordset.forEach(row => console.log(`  - ${row.TABLE_NAME}`));
+        const result = await pool.request().query('SELECT @@VERSION');
+        console.log('SQL Server Version:', result.recordset[0]);
 
         await pool.close();
-
-        // Test FormSubmissionDB
-        config.database = 'FormSubmissionDB';
-        const pool2 = await sql.connect(config);
-        const tables2 = await pool2.request().query(`
-            SELECT TABLE_NAME
-            FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_TYPE = 'BASE TABLE'
-        `);
-        console.log('\n✅ Tables in FormSubmissionDB:');
-        tables2.recordset.forEach(row => console.log(`  - ${row.TABLE_NAME}`));
-
-        await pool2.close();
-
-        console.log('\n✅ All database tests passed!');
+        return true;
     } catch (err) {
-        console.error('❌ Connection failed:', err.message);
+        console.error(`❌ ${dbName} connection failed:`, err.message);
+        return false;
+    }
+}
+
+async function testAllConnections() {
+    console.log('Testing database connections...\n');
+
+    const userDbSuccess = await testDatabaseConnection('UserRegistrationDB');
+    console.log('');
+    const formDbSuccess = await testDatabaseConnection('FormSubmissionDB');
+
+    if (userDbSuccess && formDbSuccess) {
+        console.log('\n✅ All database connections successful!');
+        process.exit(0);
+    } else {
+        console.log('\n❌ Some database connections failed.');
         process.exit(1);
     }
 }
 
-testConnection();
+testAllConnections();
 ```
 
-Run the test:
-
+Voer de test uit:
 ```bash
 cd backend
 node test-db-connection.js
 ```
 
----
+## Database Migrations
 
-## User Isolation & Security
+Als je een bestaande TrustBox installatie upgrade naar een nieuwere versie, kan het zijn dat je database aanpassingen moet maken.
 
-### How User Isolation Works
+### Toevoegen van UserId kolom (voor oude installaties)
 
-TrustBox implements user isolation to ensure users can only access their own data:
-
-1. **UserRegistrationDB.tbl_Users** assigns each user a unique `UserId`
-2. **FormSubmissionDB.FormSubmission** includes `UserId` column
-3. Application queries filter by `UserId` automatically
-
-### Query Examples with User Isolation
+Als je database nog geen `UserId` kolom heeft in de `FormSubmission` tabel:
 
 ```sql
--- Example: Get all passwords for user ID 5
 USE FormSubmissionDB;
 GO
 
-DECLARE @UserId INT = 5;
-
-SELECT
-    GroupId,
-    Username,
-    Password,  -- Encrypted in database, decrypted by application
-    Domain,
-    CreatedAt
-FROM FormSubmission
-WHERE UserId = @UserId
-ORDER BY Domain;
+-- Voeg UserId kolom toe
+ALTER TABLE FormSubmission ADD UserId INT NULL;
 GO
 
--- Example: Insert new password for user ID 5
-USE FormSubmissionDB;
+-- Update bestaande records met een geldige UserId
+-- Let op: pas de UserId waarde aan naar je eigen gebruiker ID
+UPDATE FormSubmission SET UserId = 1 WHERE UserId IS NULL;
 GO
 
-DECLARE @UserId INT = 5;
-DECLARE @GroupId INT = 101;
-DECLARE @Username NVARCHAR(255) = 'user@example.com';
-DECLARE @Password NVARCHAR(MAX) = 'ENCRYPTED_DATA_HERE';
-DECLARE @Domain NVARCHAR(255) = 'example.com';
-
-INSERT INTO FormSubmission (GroupId, UserId, Username, Password, Domain)
-VALUES (@GroupId, @UserId, @Username, @Password, @Domain);
+-- Maak kolom verplicht
+ALTER TABLE FormSubmission ALTER COLUMN UserId INT NOT NULL;
 GO
 
--- Example: Update password for user ID 5
-USE FormSubmissionDB;
+-- Verwijder oude primary key
+ALTER TABLE FormSubmission DROP CONSTRAINT PK_FormSubmission;
 GO
 
-DECLARE @UserId INT = 5;
-DECLARE @GroupId INT = 101;
-DECLARE @NewPassword NVARCHAR(MAX) = 'NEW_ENCRYPTED_DATA';
-
-UPDATE FormSubmission
-SET Password = @NewPassword,
-    LastModified = GETDATE()
-WHERE GroupId = @GroupId AND UserId = @UserId;
+-- Voeg nieuwe composite primary key toe
+ALTER TABLE FormSubmission ADD CONSTRAINT PK_FormSubmission_UserId_GroupId PRIMARY KEY (UserId, GroupId);
 GO
 
--- Example: Delete password for user ID 5
-USE FormSubmissionDB;
-GO
-
-DECLARE @UserId INT = 5;
-DECLARE @GroupId INT = 101;
-
-DELETE FROM FormSubmission
-WHERE GroupId = @GroupId AND UserId = @UserId;
+-- Voeg index toe voor betere performance
+CREATE INDEX IDX_FormSubmission_UserId ON FormSubmission(UserId);
 GO
 ```
 
-### Security Best Practices
+### Controleren van database schema versie
 
 ```sql
--- 1. Disable SA account after creating admin users (optional, for production)
-ALTER LOGIN sa DISABLE;
+-- Check of UserId kolom bestaat
+SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'FormSubmission' AND COLUMN_NAME = 'UserId';
 GO
 
--- 2. Enforce password policy for SQL logins
-ALTER LOGIN trustbox_app WITH CHECK_POLICY = ON;
-GO
-
--- 3. Check for weak passwords (query only, doesn't fix)
-SELECT name, is_policy_checked, is_expiration_checked
-FROM sys.sql_logins
-WHERE is_policy_checked = 0 OR is_expiration_checked = 0;
-GO
-
--- 4. Review database permissions
-USE UserRegistrationDB;
-GO
-
-SELECT
-    dp.name AS UserName,
-    dp.type_desc AS PrincipalType,
-    o.name AS ObjectName,
-    p.permission_name,
-    p.state_desc AS PermissionState
-FROM sys.database_permissions p
-JOIN sys.database_principals dp ON p.grantee_principal_id = dp.principal_id
-LEFT JOIN sys.objects o ON p.major_id = o.object_id
-WHERE dp.name = 'trustbox_app'
-ORDER BY dp.name, o.name, p.permission_name;
+-- Check primary key structuur
+SELECT CONSTRAINT_NAME, COLUMN_NAME
+FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+WHERE TABLE_NAME = 'FormSubmission';
 GO
 ```
 
----
-
-## Maintenance & Backup
+## Onderhoud
 
 ### Database Backup
 
 ```sql
--- Create full backup of UserRegistrationDB
--- Windows path:
+-- Backup UserRegistrationDB (pas het pad aan voor jouw OS)
 BACKUP DATABASE UserRegistrationDB
-TO DISK = 'C:\Backups\UserRegistrationDB_Full.bak'
-WITH FORMAT, INIT, NAME = 'Full Backup of UserRegistrationDB';
+TO DISK = 'C:\Backups\UserRegistrationDB.bak'
+WITH FORMAT, INIT, NAME = 'Full Backup';
 GO
 
--- Linux path (alternative):
--- BACKUP DATABASE UserRegistrationDB
--- TO DISK = '/var/opt/mssql/backup/UserRegistrationDB_Full.bak'
--- WITH FORMAT, INIT, NAME = 'Full Backup of UserRegistrationDB';
--- GO
-
--- Create full backup of FormSubmissionDB
--- Windows path:
+-- Backup FormSubmissionDB
 BACKUP DATABASE FormSubmissionDB
-TO DISK = 'C:\Backups\FormSubmissionDB_Full.bak'
-WITH FORMAT, INIT, NAME = 'Full Backup of FormSubmissionDB';
-GO
-
--- Linux path (alternative):
--- BACKUP DATABASE FormSubmissionDB
--- TO DISK = '/var/opt/mssql/backup/FormSubmissionDB_Full.bak'
--- WITH FORMAT, INIT, NAME = 'Full Backup of FormSubmissionDB';
--- GO
-
--- Verify backup (adjust path for your platform)
--- Windows:
-RESTORE VERIFYONLY
-FROM DISK = 'C:\Backups\UserRegistrationDB_Full.bak';
-GO
-
-RESTORE VERIFYONLY
-FROM DISK = 'C:\Backups\FormSubmissionDB_Full.bak';
-GO
-
--- Linux (alternative):
--- RESTORE VERIFYONLY
--- FROM DISK = '/var/opt/mssql/backup/UserRegistrationDB_Full.bak';
--- GO
---
--- RESTORE VERIFYONLY
--- FROM DISK = '/var/opt/mssql/backup/FormSubmissionDB_Full.bak';
--- GO
-```
-
-### Database Restore
-
-```sql
--- Restore UserRegistrationDB (WARNING: This will overwrite existing data)
-USE master;
-GO
-
-ALTER DATABASE UserRegistrationDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-GO
-
--- Windows path:
-RESTORE DATABASE UserRegistrationDB
-FROM DISK = 'C:\Backups\UserRegistrationDB_Full.bak'
-WITH REPLACE;
-GO
-
--- Linux path (alternative):
--- RESTORE DATABASE UserRegistrationDB
--- FROM DISK = '/var/opt/mssql/backup/UserRegistrationDB_Full.bak'
--- WITH REPLACE;
--- GO
-
-ALTER DATABASE UserRegistrationDB SET MULTI_USER;
-GO
-
--- Restore FormSubmissionDB
-USE master;
-GO
-
-ALTER DATABASE FormSubmissionDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-GO
-
--- Windows path:
-RESTORE DATABASE FormSubmissionDB
-FROM DISK = 'C:\Backups\FormSubmissionDB_Full.bak'
-WITH REPLACE;
-GO
-
--- Linux path (alternative):
--- RESTORE DATABASE FormSubmissionDB
--- FROM DISK = '/var/opt/mssql/backup/FormSubmissionDB_Full.bak'
--- WITH REPLACE;
--- GO
-
-ALTER DATABASE FormSubmissionDB SET MULTI_USER;
+TO DISK = 'C:\Backups\FormSubmissionDB.bak'
+WITH FORMAT, INIT, NAME = 'Full Backup';
 GO
 ```
 
-### Database Statistics Update
+### Index Onderhoud
 
 ```sql
--- Update statistics for better query performance
+-- Indexes rebuilden
 USE UserRegistrationDB;
-GO
-UPDATE STATISTICS tbl_Users;
-GO
-
-USE FormSubmissionDB;
-GO
-UPDATE STATISTICS FormSubmission;
-GO
-```
-
-### Index Maintenance
-
-```sql
--- Rebuild indexes for optimal performance
-USE UserRegistrationDB;
-GO
 ALTER INDEX ALL ON tbl_Users REBUILD;
 GO
 
 USE FormSubmissionDB;
-GO
 ALTER INDEX ALL ON FormSubmission REBUILD;
 GO
 
--- Check index fragmentation
+-- Fragmentatie checken
 SELECT
     OBJECT_NAME(i.object_id) AS TableName,
     i.name AS IndexName,
     s.avg_fragmentation_in_percent
 FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'LIMITED') s
 JOIN sys.indexes i ON s.object_id = i.object_id AND s.index_id = i.index_id
-WHERE s.avg_fragmentation_in_percent > 10
-ORDER BY s.avg_fragmentation_in_percent DESC;
+WHERE s.avg_fragmentation_in_percent > 10;
 GO
 ```
 
-### Database Space Usage
+### Statistics Updaten
 
 ```sql
--- Check database size
-EXEC sp_spaceused;
-GO
-
--- Check table sizes in UserRegistrationDB
 USE UserRegistrationDB;
-GO
-EXEC sp_spaceused 'tbl_Users';
+UPDATE STATISTICS tbl_Users;
 GO
 
--- Check table sizes in FormSubmissionDB
 USE FormSubmissionDB;
-GO
-EXEC sp_spaceused 'FormSubmission';
-GO
-
--- Detailed space analysis
-SELECT
-    DB_NAME() AS DatabaseName,
-    name AS FileName,
-    size * 8 / 1024 AS SizeMB,
-    CAST(FILEPROPERTY(name, 'SpaceUsed') AS INT) * 8 / 1024 AS UsedMB,
-    size * 8 / 1024 - CAST(FILEPROPERTY(name, 'SpaceUsed') AS INT) * 8 / 1024 AS FreeMB
-FROM sys.database_files;
+UPDATE STATISTICS FormSubmission;
 GO
 ```
-
----
 
 ## Troubleshooting
 
-### Issue 1: "Database does not exist"
-
+### Database Bestaat Niet
 ```sql
--- Check if databases exist
-SELECT name, state_desc
-FROM sys.databases
+-- Controleer of databases bestaan
+SELECT name, state_desc FROM sys.databases
 WHERE name IN ('UserRegistrationDB', 'FormSubmissionDB');
 GO
 
--- If missing, create them
+-- Aanmaken als ze ontbreken
 CREATE DATABASE UserRegistrationDB;
-GO
 CREATE DATABASE FormSubmissionDB;
 GO
 ```
 
-### Issue 2: "Invalid object name 'tbl_Users'"
-
+### Login Mislukt
 ```sql
--- Check if table exists
-USE UserRegistrationDB;
-GO
-
-SELECT TABLE_NAME
-FROM INFORMATION_SCHEMA.TABLES
-WHERE TABLE_NAME = 'tbl_Users';
-GO
-
--- If missing, create it (see "Creating Tables" section)
-```
-
-### Issue 3: "Login failed for user 'trustbox_app'"
-
-```sql
--- Check if login exists
-SELECT name, type_desc, is_disabled
-FROM sys.server_principals
+-- Controleer of login bestaat en actief is
+SELECT name, type_desc, is_disabled FROM sys.server_principals
 WHERE name = 'trustbox_app';
 GO
 
--- If disabled, enable it
+-- Activeer als hij uitgeschakeld is
 ALTER LOGIN trustbox_app ENABLE;
 GO
 
--- Reset password if needed
-ALTER LOGIN trustbox_app WITH PASSWORD = 'NewStrongPassword123!';
+-- Reset wachtwoord
+ALTER LOGIN trustbox_app WITH PASSWORD = 'NieuwWachtwoord123!';
 GO
 ```
 
-### Issue 4: "User does not have permission"
-
+### Geen Rechten
 ```sql
--- Check current permissions
+-- Rechten checken
 USE UserRegistrationDB;
 GO
 
-SELECT
-    dp.name AS UserName,
-    r.name AS RoleName
+SELECT dp.name AS UserName, r.name AS RoleName
 FROM sys.database_principals dp
 LEFT JOIN sys.database_role_members drm ON dp.principal_id = drm.member_principal_id
 LEFT JOIN sys.database_principals r ON drm.role_principal_id = r.principal_id
 WHERE dp.name = 'trustbox_app';
 GO
 
--- Grant necessary permissions
+-- Rechten geven
 ALTER ROLE db_datareader ADD MEMBER trustbox_app;
 ALTER ROLE db_datawriter ADD MEMBER trustbox_app;
 GO
 ```
 
-### Issue 5: "Cannot connect to database"
-
+### Kan Niet Verbinden
 ```bash
-# Test SQL Server is running (Windows)
-Get-Service MSSQLSERVER
-
-# Test SQL Server is running (Linux)
+# Check of SQL Server draait (Linux)
 systemctl status mssql-server
 
-# Test connectivity
-sqlcmd -S localhost -U sa -P 'YourPassword' -Q "SELECT @@VERSION"
+# Check of SQL Server draait (Windows)
+Get-Service MSSQLSERVER
+
+# Test connectiviteit
+sqlcmd -S localhost -U sa -P 'JouwWachtwoord' -Q "SELECT @@VERSION"
 ```
 
-### Issue 6: Index fragmentation causing slow queries
+## Snelle Referentie
 
 ```sql
--- Check fragmentation levels
-USE UserRegistrationDB;
-GO
-
-SELECT
-    OBJECT_NAME(i.object_id) AS TableName,
-    i.name AS IndexName,
-    s.avg_fragmentation_in_percent,
-    s.page_count
-FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'LIMITED') s
-JOIN sys.indexes i ON s.object_id = i.object_id AND s.index_id = i.index_id
-WHERE s.avg_fragmentation_in_percent > 30
-ORDER BY s.avg_fragmentation_in_percent DESC;
-GO
-
--- Rebuild fragmented indexes
-ALTER INDEX ALL ON tbl_Users REBUILD;
-GO
-```
-
-### Issue 7: Database locked / in use
-
-```sql
--- Check active connections
-USE master;
-GO
-
-SELECT
-    session_id,
-    login_name,
-    host_name,
-    program_name,
-    status
-FROM sys.dm_exec_sessions
-WHERE database_id = DB_ID('UserRegistrationDB');
-GO
-
--- Kill blocking sessions (use with caution)
--- KILL <session_id>;
-```
-
----
-
-## Quick Reference Commands
-
-```sql
--- List all databases
+-- Alle databases tonen
 SELECT name FROM sys.databases ORDER BY name;
 
--- List all tables in current database
+-- Alle tabellen tonen
 SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';
 
--- List all columns in a table
-SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_NAME = 'tbl_Users';
-
--- Count rows in a table
+-- Rijen tellen
 SELECT COUNT(*) FROM tbl_Users;
 SELECT COUNT(*) FROM FormSubmission;
 
--- Check server version
+-- Server versie checken
 SELECT @@VERSION;
 
--- Check current database
+-- Huidige database checken
 SELECT DB_NAME();
-
--- Check current user
-SELECT USER_NAME();
-
--- List all logins
-SELECT name, type_desc, create_date FROM sys.server_principals WHERE type IN ('S', 'U');
-
--- List all database users
-SELECT name, type_desc, create_date FROM sys.database_principals WHERE type IN ('S', 'U');
 ```
 
----
+## Volgende Stappen
 
-## Database Migrations
+1. ✅ Configureer applicatie - Pas `backend/.env` aan
+2. ✅ Genereer encryptiesleutel - Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+3. ✅ Test verbinding - Run `node backend/test-db-connection.js`
+4. ✅ Start backend - Run `cd backend && npm start`
+5. ✅ Test registratie en login
+6. ✅ Test wachtwoord opslag
 
-If you already have an existing TrustBox database installation, you may need to apply migrations to update the schema.
-
-### Applying Migration 001: Fix Primary Key
-
-**Issue:** If users other than the first user receive "PRIMARY KEY constraint violation" errors when saving data, you need to apply migration 001.
-
-**To apply:**
-
-```bash
-# Using sqlcmd
-cd /path/to/TrustBox
-sqlcmd -S localhost -U sa -P 'YourPassword' -i migrations/001_fix_formsubmission_primary_key.sql -C
-```
-
-See the [migrations/README.md](migrations/README.md) file for detailed migration instructions.
-
----
-
-## Next Steps
-
-After completing this database setup:
-
-1. ✅ **Configure Application** - Update `backend/.env` with database credentials
-2. ✅ **Generate Encryption Key** - Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-3. ✅ **Test Connection** - Run `node backend/test-db-connection.js`
-4. ✅ **Start Backend** - Run `cd backend && npm start`
-5. ✅ **Test Registration** - Create a test user account
-6. ✅ **Test Login** - Verify authentication works
-7. ✅ **Test Password Storage** - Save and retrieve encrypted passwords
-
----
-
-## Additional Resources
-
-- [Microsoft SQL Server T-SQL Reference](https://docs.microsoft.com/en-us/sql/t-sql/)
-- [SQL Server Best Practices](https://docs.microsoft.com/en-us/sql/sql-server/best-practices)
-- [TrustBox README](README.md)
-- [TrustBox API Documentation](README.md#-api-documentatie)
-
----
-
-**Need help?** Open an issue on the [GitHub repository](https://github.com/Veradux001/TrustBox/issues).
+**Hulp nodig?** Open een issue op de [GitHub repository](https://github.com/Veradux001/TrustBox/issues).
