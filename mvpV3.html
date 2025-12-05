@@ -30,7 +30,7 @@
     <h1>TrustBox</h1>
     <img src="trustbox-logo.png.png" class="logo" alt="TrustBox logo">
     <div class="top-text">
-        <p class="subtitle">Secure. Simple. Yours.<br>Your passwords, safely stored and managed</p>
+        <p class="subtitle">Veilig. Simpel. Van jou.<br>Je wachtwoorden, veilig opgeslagen en beheerd</p>
     </div>
 
     <script>
@@ -39,7 +39,7 @@
         if (userData) {
             try {
                 const user = JSON.parse(userData);
-                document.getElementById('userWelcome').textContent = `Welcome, ${user.username}!`;
+                document.getElementById('userWelcome').textContent = `Welkom, ${user.username}!`;
             } catch (e) {
                 console.error('Error parsing user data:', e);
             }
@@ -62,8 +62,9 @@
 
         <hr>
 
-        <button type="button" id="addGroupButton" onclick="addNewGroup()">➕ Add new group</button>
+        <button type="button" id="addGroupButton" onclick="addNewGroup()">➕ nieuwe groep toevoegen</button>
     </div>
 </body>
+
 
 </html>
