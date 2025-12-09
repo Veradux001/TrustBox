@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustBox - Maak een account</title>
+    <!-- CSRF token: Add this meta tag when backend implements CSRF protection -->
+    <!-- <meta name="csrf-token" content="CSRF_TOKEN_HERE"> -->
+
+    <!-- Icons -->
+    <script src="https://kit.fontawesome.com/4fae0f3553.js" crossorigin="anonymous"></script>
+
+
+    <!-- CSS voor deze pagina -->
+    <link rel="stylesheet" href="registerV3.css">
+</head>
+
+<body>
+
+    <!-- Bovenste tekst (zelfde stijl als login) -->
+    <div class="top-text">
+        <!-- Heb je geen logo? Laat de img weg of comment hem uit -->
+        <!--<img src="trustbox-logo.png" class="logo" alt="TrustBox logo">-->
+        <h2>Welkom bij TrustBox</h2>
+        <p class="subtitle">
+            Veilig. Simpel. Van jou.<br>
+            Je wachtwoord, veilig opgeslagen en beheerd
+        </p>
+    </div>
+
+    <!-- Witte kaart met formulier -->
+    <div class="wrapper">
+        <form id="registerForm">
+
+            <h3 class="form-title">Maak account</h3>
+            <p class="form-subtitle">Begin vandaag nog met het beveiligen van je wachtwoorden</p>
+
+            <!-- Error/Success Message Container -->
+            <div id="messageContainer" style="display: none; padding: 10px; margin-bottom: 15px; border-radius: 4px;"></div>
+
+            <!-- UserName -->
+            <div class="input-box">
+                <i class="fa-solid fa-user icon-left"></i>
+                <input type="text" name="username" placeholder="Gebruikersnaam" required>
+            </div>
+
+            <!-- Email Address -->
+            <div class="input-box">
+                <i class="fa-solid fa-envelope icon-left"></i>
+                <input type="email" name="email" placeholder="E-mailadres" required>
+            </div>
+
+            <!-- Password -->
+            <div class="input-box">
+                <i class="fa-solid fa-lock icon-left"></i>
+                <input type="password" name="password" placeholder="Wachtwoord (min. 8 characters)" id="passwordInput" required>
+                <i class="fa-solid fa-eye icon-right" id="togglePassword" style="cursor: pointer;"></i>
+            </div>
+            <div id="passwordStrength" style="margin-top: -10px; margin-bottom: 10px; font-size: 12px;"></div>
+
+            <!-- Confirm Password -->
+            <div class="input-box">
+                <i class="fa-solid fa-lock icon-left"></i>
+                <input type="password" name="confirmPassword" placeholder="Bevestig wachtwoord" id="confirmPasswordInput" required>
+                <i class="fa-solid fa-eye icon-right" id="toggleConfirmPassword" style="cursor: pointer;"></i>
+            </div>
+
+            <!-- Name authorizedPerson -->
+            <div class="input-box">
+                <i class="fa-solid fa-user icon-left"></i>
+                <input type="text" name="authorizedPerson" placeholder="Gemachtigde Persoon">
+            </div>
+
+            <!-- authorizedEmail -->
+            <div class="input-box">
+                <i class="fa-solid fa-envelope icon-left"></i>
+                <input type="email" name="authorizedEmail" placeholder="Gemachtigde e-mailadres">
+            </div>
+
+
+            <!-- Checkbox: Terms of Service / Privacy Policy -->
+            <div class="terms-container">
+                <input type="checkbox" id="agree" name="agree">
+                <label for="agree">
+                    Ik ga akkoord met de <a href="TermsOfServices.html" target="_blank">Servicevoorwaarden</a> en <a
+                        href="PrivacyPolicy.html" target="_blank">Privacybeleid</a>
+                </label>
+            </div>
+
+            <!-- Knop -->
+            <button type="submit" class="btn">Maak account</button>
+
+            <!-- Link naar login pagina -->
+            <div class="login-link">
+                <p>Heb je al een account? <a href="loginV3.html">Inloggen</a></p>
+            </div>
+
+        </form>
+    </div>
+
+    <script src="registerV3_1.js"></script>
+</body>
+
+
+</html>
+
+
+
+
+

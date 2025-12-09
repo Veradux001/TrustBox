@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustBox Login</title>
+    <script src="https://kit.fontawesome.com/4fae0f3553.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="loginV3.css">
+    <script src="loginV3.js"></script>
+</head>
+
+<body>
+
+    <div class="top-text">
+        <img src="trustbox-logo.png" class="logo" alt="TrustBox Logo">
+        <h2>Welkom bij TrustBox</h2>
+        <p class="subtitle">Veilig. Simpel. Van jou.<br>Je wachtwoorden, Veilig opgeslagen en beheerd</p>
+    </div>
+
+    <div class="wrapper">
+        <form id="loginForm">
+
+            <h3 class="form-title">Inloggen</h3>
+            <p class="form-subtitle">Toegang tot je beveiligde wachtwoordkluis</p>
+
+            <!-- Error/Success Message Container -->
+            <div id="messageContainer" style="display: none; padding: 10px; margin-bottom: 15px; border-radius: 4px;"></div>
+
+            <div class="input-box">
+                <i class="fa-solid fa-envelope icon-left"></i>
+                <input type="email" name="email" placeholder="user123@gmail.com" id="emailInput" required>
+            </div>
+
+            <div class="input-box">
+                <i class="fa-solid fa-lock icon-left"></i>
+                <input type="password" name="password" placeholder="Wachtwoord" required id="myInput">
+                <i class="fa-solid fa-eye icon-right" id="togglePassword" style="cursor: pointer;"></i>
+            </div>
+
+            <div class="show-Remember">
+                <label><input type="checkbox" id="showPasswordCheckbox">Toon wachtwoord</label>
+                <a href="forgotpasswordV3.html">Klantenservice</a>
+            </div>
+
+            <button type="submit" class="btn">Inloggen</button>
+
+            <div class="register-link">
+                <p>Heb je geen account? <a href="registerV3.html">Maak er één</a></p>
+            </div>
+
+        </form>
+    </div>
+
+    <p class="footer-text">Uw gegevens zijn versleuteld en veilig 🔒</p>
+
+</body>
+
+
+</html>
+

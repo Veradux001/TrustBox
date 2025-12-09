@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustBox - Password Manager</title>
+    <script>
+        // Authentication check - runs BEFORE page loads
+        (function() {
+            const isLoggedIn = localStorage.getItem('trustbox_logged_in');
+            const user = localStorage.getItem('trustbox_user');
+
+            if (!isLoggedIn || isLoggedIn !== 'true' || !user) {
+                // Not logged in - redirect to login page
+                window.location.href = 'loginV3.html';
+            }
+        })();
+    </script>
+    <script src="mvpV3buttons.js"></script>
+    <link rel="stylesheet" href="mvpV3.css">
+</head>
+
+<body>
+    <div style="position: absolute; top: 20px; right: 20px;">
+        <span id="userWelcome" style="margin-right: 15px; font-weight: bold;"></span>
+        <button onclick="logout()" style="padding: 8px 16px; cursor: pointer; background: #e74c3c; color: white; border: none; border-radius: 4px;">Uitloggen</button>
+    </div>
+
+    <h1>TrustBox</h1>
+    <img src="trustbox-logo.png" class="logo" alt="TrustBox logo">
+    <div class="top-text">
+        <p class="subtitle">Veilig. Simpel. Van jou.<br>Je wachtwoorden, veilig opgeslagen en beheerd</p>
+    </div>
+
+    <script>
+        // Display welcome message with username
+        const userData = localStorage.getItem('trustbox_user');
+        if (userData) {
+            try {
+                const user = JSON.parse(userData);
+                document.getElementById('userWelcome').textContent = `Welkom, ${user.username}!`;
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+            }
+        }
+
+        // Logout function
+        function logout() {
+            // Clear all session data
+            localStorage.removeItem('trustbox_logged_in');
+            localStorage.removeItem('trustbox_user');
+
+            // Redirect to login page
+            window.location.href = 'loginV3.html';
+        }
+    </script>
+    <div class="wrapper">
+        <form id="mvp-form">
+            <!-- Form groups are loaded dynamically by mvpV3buttons.js -->
+        </form>
+
+        <hr>
+
+        <button type="button" id="addGroupButton" onclick="addNewGroup()">➕ nieuwe groep toevoegen</button>
+    </div>
+</body>
+
+
+</html>
+
+
